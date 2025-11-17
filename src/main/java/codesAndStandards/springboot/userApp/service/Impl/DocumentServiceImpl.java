@@ -139,6 +139,14 @@ public class DocumentServiceImpl implements DocumentService {
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
             filePathStr = filePath.toString();
         }
+        Document document = documentRepository.findById(id)
+
+                .orElseThrow(() -> new RuntimeException("Document not found with id: " + id));
+        if (documentDto.getFilePath() != null && !documentDto.getFilePath().isEmpty()) {
+
+            document.setFilePath(documentDto.getFilePath());
+
+        }
 
         // 2️⃣ Validate user
         User user = userRepository.findByUsername(username);

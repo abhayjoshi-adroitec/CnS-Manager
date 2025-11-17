@@ -7,14 +7,11 @@
 
     <!-- Pass userRole from backend to JavaScript -->
     <script th:inline="javascript">
-        window.userRole = /*[[${userRole}]]*/ 'Viewer'; // Get user role from backend
-        con
-
-
-sole.log('User Role:', window.userRole);
+        window.userRole = /*[[${userRole}]]*/ 'Viewer';
+        console.log('User Role:', window.userRole);
     </script>
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -24,7 +21,9 @@ sole.log('User Role:', window.userRole);
     <style>
         body {
             background-color: #f5f7fa;
-            padding-top: 70px;
+            margin: 0;
+            padding: 0;
+            padding-top:70px;
         }
 
         /* Page Header */
@@ -300,7 +299,7 @@ sole.log('User Role:', window.userRole);
             color:#ffffff;
         }
 
-        .col-version {
+        .col-Edition {
             min-width: 80px;
             text-align: center;
             background-color: #1e3a5f;
@@ -478,6 +477,50 @@ sole.log('User Role:', window.userRole);
         .card-action-btn i {
             font-size: 14px;
         }
+        .btn-outline-primary-custom {
+            background-color: white !important;
+            border: 1px solid #0d6efd !important; /* Bootstrap primary color */
+            color: #0d6efd !important;
+        }
+
+        .btn-outline-primary-custom:hover {
+            background-color: #0d6efd !important;
+            color: white !important;
+        }
+        .btn-outline-view-custom {
+            background-color: white !important;
+            border: 1px solid #4DA3FF !important;
+            color: #4DA3FF !important;
+        }
+
+        .btn-outline-view-custom:hover {
+            background-color: #4DA3FF !important;
+            color: white !important;
+        }
+        .btn-outline-download-custom {
+            background-color: white !important;
+            border: 1px solid #1e3a5f !important;
+            color: #1e3a5f !important;
+        }
+
+        .btn-outline-download-custom:hover {
+            background-color: #1e3a5f !important;
+            color: white !important;
+        }
+        .btn-outline-danger-custom {
+            background-color: white !important;
+            border: 1px solid #dc3545 !important;
+            color: #dc3545 !important;
+        }
+
+        .btn-outline-danger-custom:hover {
+            background-color: #dc3545 !important;
+            color: white !important;
+        }
+
+
+
+
 
         /* Tags & Classifications Badges */
         .tag-badge {
@@ -488,6 +531,7 @@ sole.log('User Role:', window.userRole);
             font-weight:500;
             background-color:#4DA3FF;
             color:#ffffff;
+            margin-right: 4px;
         }
 
         .classification-badge {
@@ -498,7 +542,9 @@ sole.log('User Role:', window.userRole);
             font-weight:500;
             background-color:#1e3a5f;
             color:#ffffff;
+            margin-right: 4px;
         }
+
         .tag-more, .classification-more {
             display: inline-block;
             padding: 4px 8px;
@@ -510,6 +556,32 @@ sole.log('User Role:', window.userRole);
         }
 
         /* Action Buttons for List View */
+        .btn-outline-view {
+          color: #4DA3FF;
+          border-color: #4DA3FF;
+          transition: all 0.2s ease-in-out;
+        }
+
+        .btn-outline-view:hover {
+          color: #fff;
+          background-color: #4DA3FF;
+          border-color: #4DA3FF;
+        }
+
+        .btn-outline-download {
+          color: #1e3a5f;
+          border: 1px solid #1e3a5f;
+          background-color: transparent;
+          transition: all 0.2s ease-in-out;
+        }
+
+        .btn-outline-download:hover,
+        .btn-outline-download:focus {
+          color: #ffffff;
+          background-color: #1e3a5f;
+          border-color: #1e3a5f;
+        }
+
         .action-btn {
             width: 32px;
             height: 32px;
@@ -642,46 +714,6 @@ sole.log('User Role:', window.userRole);
             gap: 5px;
         }
 
-        /* Responsive */
-        @media (max-width: 1200px) {
-            .filter-row {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .search-box {
-                max-width: 100%;
-            }
-
-            .filter-controls {
-                width: 100%;
-            }
-
-            .filter-select {
-                flex: 1;
-            }
-        }
-
-        @media (max-width: 992px) {
-            .documents-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .data-grid-table {
-                font-size: 13px;
-            }
-
-            .data-grid-table thead th,
-            .data-grid-table tbody td {
-                padding: 12px 10px;
-            }
-
-            .col-actions {
-                position: relative;
-                box-shadow: none;
-            }
-        }
-
         /* Delete Modal Styling */
         .modal-content {
             border-radius: 12px;
@@ -764,6 +796,62 @@ sole.log('User Role:', window.userRole);
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-box {
+                max-width: 100%;
+            }
+
+            .filter-controls {
+                width: 100%;
+            }
+
+            .filter-select {
+                flex: 1;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .documents-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .data-grid-table {
+                font-size: 13px;
+            }
+
+            .data-grid-table thead th,
+            .data-grid-table tbody td {
+                padding: 12px 10px;
+            }
+
+            .col-actions {
+                position: relative;
+                box-shadow: none;
+            }
+        }
+        #documentsTable tbody:hover,
+        .document-card:hover {
+        background: #f7fafc;
+        }
+        .card-footer-fixed {
+            margin-top: auto;
+        }
+        .document-card {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .list-view, .grid-view {
+            visibility: hidden;
+        }
+
     </style>
 </head>
 <body>
@@ -781,8 +869,8 @@ sole.log('User Role:', window.userRole);
     <!-- Include Sidebar -->
     <div th:replace="~{common/sidebar :: sidebar}"></div>
 
-    <!-- Main Content -->
-    <div class="flex-grow-1 p-4">
+    <!-- Main Content - IMPORTANT: Added main-content class -->
+    <div class="main-content flex-grow-1 p-4">
 
         <!-- Breadcrumb -->
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -832,11 +920,9 @@ sole.log('User Role:', window.userRole);
                         <option th:each="tag : ${allTags}" th:value="${tag.tagName}" th:text="${tag.tagName}"></option>
                     </select>
 
-
                     <!-- Classifications Filter -->
                     <select class="filter-select" id="classificationFilter" onchange="applyAllFilters()">
                         <option value="">All Classifications</option>
-                        <!-- Dynamic options from backend -->
                         <option th:each="classification : ${allClassifications}"
                                 th:value="${classification.classificationName}"
                                 th:text="${classification.classificationName}">
@@ -888,8 +974,8 @@ sole.log('User Role:', window.userRole);
                                 Product Code
                                 <span class="sort-icon"></span>
                             </th>
-                            <th class="col-version sortable" onclick="sortTable('version')">
-                                Version
+                            <th class="col-Edition sortable" onclick="sortTable('Edition')">
+                                Edition
                                 <span class="sort-icon"></span>
                             </th>
                             <th class="col-date sortable" onclick="sortTable('publishDate')">
@@ -918,12 +1004,14 @@ sole.log('User Role:', window.userRole);
                                     data-upload-date=${doc.uploadedAt},
                                     data-title=${doc.title},
                                     data-code=${doc.productCode},
-                                    data-version=${doc.edition},
+                                    data-Edition=${doc.edition},
                                     data-publish-date=${doc.publishDate},
                                     data-pages=${doc.noOfPages}">
 
                             <!-- Document Details -->
                             <td class="col-title">
+                                <!-- ✔ HIDDEN LINK ADDED HERE -->
+                                <a class="doc-main-link" th:href="@{/DocViewer(id=${doc.id})}" style="display:none;"></a>
                                 <div class="doc-title">
                                     <i class="bi bi-file-earmark-text"></i>
                                     <span th:text="${doc.title}">Safety Protocol Manual</span>
@@ -935,8 +1023,8 @@ sole.log('User Role:', window.userRole);
                                 <span th:text="${doc.productCode}">SP-005</span>
                             </td>
 
-                            <!-- Version/Edition -->
-                            <td class="col-version">
+                            <!-- Edition -->
+                            <td class="col-Edition">
                                 <span th:text="${doc.edition != null ? doc.edition : '-'}">v2.0</span>
                             </td>
 
@@ -1010,13 +1098,13 @@ sole.log('User Role:', window.userRole);
                             <!-- Actions -->
                             <td class="col-actions">
                                 <!-- View Button -->
-                                <a th:href="@{/DocViewer(id=${doc.id})}" class="action-btn btn-view" title="View">
+                                <a th:href="@{/DocViewer(id=${doc.id})}" class="btn btn-sm btn-outline-view me-1" title="View">
                                     <i class="bi bi-eye"></i>
                                 </a>
 
                                 <!-- Edit Button -->
                                 <a th:href="@{/document/edit/{id}(id=${doc.id})}"
-                                   class="action-btn btn-edit"
+                                   class="btn btn-sm btn-outline-primary me-1"
                                    title="Edit"
                                    th:if="${userRole != 'Viewer'}">
                                     <i class="bi bi-pencil"></i>
@@ -1024,7 +1112,7 @@ sole.log('User Role:', window.userRole);
 
                                 <!-- Download Button -->
                                 <a href="#"
-                                   class="action-btn btn-download"
+                                   class="btn btn-sm btn-outline-download me-1"
                                    title="Download"
                                    th:attr="data-doc-id=${doc.id}, data-doc-title=${doc.title}"
                                    onclick="showDownloadModal(this); return false;"
@@ -1034,7 +1122,7 @@ sole.log('User Role:', window.userRole);
 
                                 <!-- Delete Button -->
                                 <a href="#"
-                                   class="action-btn btn-delete"
+                                   class="btn btn-sm btn-outline-danger"
                                    title="Delete"
                                    th:attr="data-doc-id=${doc.id}, data-doc-title=${doc.title}"
                                    onclick="showDeleteModal(this); return false;"
@@ -1059,20 +1147,21 @@ sole.log('User Role:', window.userRole);
                                                    (doc.classifications != null and !doc.classifications.isEmpty() ? #strings.listJoin(doc.classifications.![classificationName], ',') : '')},
                              data-upload-date=${doc.uploadedAt},
                              data-title=${doc.title}">
-
+                    <!-- ✔ HIDDEN LINK ADDED HERE -->
+                    <a class="doc-main-link" th:href="@{/DocViewer(id=${doc.id})}" style="display:none;"></a>
                     <!-- Card Actions -->
                     <div class="card-actions">
-                        <a th:href="@{/DocViewer(id=${doc.id})}" class="card-action-btn" title="View">
+                        <a th:href="@{/DocViewer(id=${doc.id})}" class="btn btn-sm btn-outline-view-custom me-1" title="View">
                             <i class="bi bi-eye"></i>
                         </a>
                         <a th:href="@{/document/edit/{id}(id=${doc.id})}"
-                           class="card-action-btn"
+                           class="btn btn-sm btn-outline-primary-custom me-1"
                            title="Edit"
                            th:if="${userRole != 'Viewer'}">
                             <i class="bi bi-pencil"></i>
                         </a>
                         <a href="#"
-                           class="card-action-btn"
+                           class="btn btn-sm btn-outline-download-custom me-1"
                            title="Download"
                            th:attr="data-doc-id=${doc.id}, data-doc-title=${doc.title}"
                            onclick="showDownloadModal(this); return false;"
@@ -1080,7 +1169,7 @@ sole.log('User Role:', window.userRole);
                             <i class="bi bi-download"></i>
                         </a>
                         <a href="#"
-                           class="card-action-btn"
+                           class="btn btn-sm btn-outline-danger-custom"
                            title="Delete"
                            th:attr="data-doc-id=${doc.id}, data-doc-title=${doc.title}"
                            onclick="showDeleteModal(this); return false;"
@@ -1174,7 +1263,7 @@ sole.log('User Role:', window.userRole);
                     </div>
 
                     <!-- Card Footer -->
-                    <div class="card-footer">
+                    <div class="card-footer card-footer-fixed">
                         <span class="card-pages"
                               th:text="${doc.noOfPages != null ? doc.noOfPages + ' pages' : '-'}">52 pages</span>
                     </div>
@@ -1195,79 +1284,117 @@ sole.log('User Role:', window.userRole);
         </div>
 
     </div>
+</div>
 
-    <!-- Delete Confirmation Modal -->
-    <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header border-0 pb-0">
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body text-center pt-0 pb-4">
-                    <div class="delete-icon mb-3">
-                        <i class="bi bi-trash3" style="font-size: 48px; color: #ef4444;"></i>
-                    </div>
-                    <h5 class="modal-title mb-2" style="font-size: 20px; font-weight: 600; color: #1a2332;">Delete Document?</h5>
-                    <p class="text-muted mb-0" style="font-size: 14px;">
-                        Are you sure you want to delete "<strong id="documentTitle"></strong>"?
-                    </p>
-                    <p class="text-danger mb-0 mt-2" style="font-size: 13px;">
-                        <i class="bi bi-exclamation-triangle me-1"></i> This action cannot be undone!
-                    </p>
-                </div>
-                <div class="modal-footer border-0 pt-0 justify-content-center gap-2">
-                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal" style="border-radius: 6px;">
-                        Cancel
-                    </button>
-                    <a href="#" id="confirmDeleteBtn" class="btn btn-danger px-4" style="border-radius: 6px;">
-                        <i class="bi bi-trash me-2"></i> Delete
-                    </a>
-                </div>
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-        </div>
-    </div>
-
-    <!-- Download Confirmation Modal -->
-    <div class="modal fade" id="downloadModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title" style="font-size: 18px; font-weight: 600; color: #1a2332;">Download PDF</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-body text-center pt-0 pb-4">
+                <div class="delete-icon mb-3">
+                    <i class="bi bi-trash3" style="font-size: 48px; color: #ef4444;"></i>
                 </div>
-                <div class="modal-body text-center pt-4 pb-4">
-                    <div class="download-icon mb-3">
-                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
-                            <i class="bi bi-shield-check" style="font-size: 40px; color: white;"></i>
-                        </div>
-                    </div>
-                    <h5 class="mb-3" style="font-size: 18px; font-weight: 600; color: #1a2332;">Watermarked Download</h5>
-                    <p class="text-muted mb-0" style="font-size: 14px; line-height: 1.6;">
-                        This PDF will be downloaded with watermarks for security purposes.
-                    </p>
-                    <p class="mt-2 mb-0" style="font-size: 13px; color: #6b7a99;">
-                        Document: <strong id="downloadDocTitle"></strong>
-                    </p>
-                </div>
-                <div class="modal-footer border-0 pt-0 justify-content-center gap-2">
-                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal" style="border-radius: 6px;">
-                        Cancel
-                    </button>
-                    <a href="#" id="confirmDownloadBtn" class="btn btn-primary px-4" style="border-radius: 6px; background: #4285f4; border: none;">
-                        <i class="bi bi-download me-2"></i> Download with Watermark
-                    </a>
-                </div>
+                <h5 class="modal-title mb-2" style="font-size: 20px; font-weight: 600; color: #1a2332;">Delete Document?</h5>
+                <p class="text-muted mb-0" style="font-size: 14px;">
+                    Are you sure you want to delete "<strong id="documentTitle"></strong>"?
+                </p>
+                <p class="text-danger mb-0 mt-2" style="font-size: 13px;">
+                    <i class="bi bi-exclamation-triangle me-1"></i> This action cannot be undone!
+                </p>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center gap-2">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal" style="border-radius: 6px;">
+                    Cancel
+                </button>
+                <a href="#" id="confirmDeleteBtn" class="btn btn-danger px-4" style="border-radius: 6px;">
+                    <i class="bi bi-trash me-2"></i> Delete
+                </a>
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Download Confirmation Modal -->
+<div class="modal fade" id="downloadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title" style="font-size: 18px; font-weight: 600; color: #1a2332;">Download PDF</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center pt-4 pb-4">
+                <div class="download-icon mb-3">
+                    <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                        <i class="bi bi-shield-check" style="font-size: 40px; color: white;"></i>
+                    </div>
+                </div>
+                <h5 class="mb-3" style="font-size: 18px; font-weight: 600; color: #1a2332;">Watermarked Download</h5>
+                <p class="text-muted mb-0" style="font-size: 14px; line-height: 1.6;">
+                    This PDF will be downloaded with watermarks for security purposes.
+                </p>
+                <p class="mt-2 mb-0" style="font-size: 13px; color: #6b7a99;">
+                    Document: <strong id="downloadDocTitle"></strong>
+                </p>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center gap-2">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal" style="border-radius: 6px;">
+                    Cancel
+                </button>
+                <a href="#" id="confirmDownloadBtn" class="btn btn-primary px-4" style="border-radius: 6px; background: #4285f4; border: none;">
+                    <i class="bi bi-download me-2"></i> Download with Watermark
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/js/bootstrap.bundle.min.js"></script>
 <!-- Include Navbar JavaScript -->
 <div th:replace="~{common/navbar :: navbar-js}"></div>
+<script th:inline="javascript">
+    window.addEventListener('DOMContentLoaded', bindClicks);
+</script>
 
 <script th:inline="javascript">
     // ==================== DATE FORMATTING UTILITY ====================
+    function showContent() {
+        document.querySelector('.list-view').style.visibility = 'visible';
+        document.querySelector('.grid-view').style.visibility = 'visible';
+    }
+    function formatToMonthYear(dateStr) {
+        if (!dateStr || dateStr.trim() === '' || dateStr === '-') {
+            return '';
+        }
+
+        const original = dateStr.trim();
+
+        // Extract YEAR
+        const yearMatch = original.match(/^\d{4}/);
+        if (!yearMatch) return '';
+        const year = yearMatch[0];
+
+        // Extract MONTH (any format: YYYY-MM, YYYY-MM-DD)
+        const monthMatch = original.match(/^\d{4}-(\d{2})/);
+        let monthNum = monthMatch ? monthMatch[1] : null;
+
+        // If month missing OR month is 00 → return ONLY year
+        if (!monthNum || monthNum === "00") {
+            return year;
+        }
+
+        // Convert month number to name
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthName = monthNames[parseInt(monthNum, 10) - 1];
+
+        return `${year} ${monthName}`;
+    }
+
+
+
     function formatDateToDDMMMYYYY(dateStr, includeTime = false) {
         if (!dateStr || dateStr === '-') return dateStr;
 
@@ -1312,13 +1439,14 @@ sole.log('User Role:', window.userRole);
 
     function formatAllDates() {
         const dateElements = document.querySelectorAll('.format-date:not(.format-date-time)');
-        dateElements.forEach(element => {
-            const originalDate = element.textContent.trim();
-            if (originalDate && originalDate !== '-') {
-                const formattedDate = formatDateToDDMMMYYYY(originalDate, false);
-                element.textContent = formattedDate;
-            }
-        });
+            dateElements.forEach(element => {
+                const originalDate = element.textContent.trim();
+                if (originalDate && originalDate !== '-') {
+                    const formattedDate = formatToMonthYear(originalDate); // NEW
+                    element.textContent = formattedDate;
+                }
+            });
+
 
         const dateTimeElements = document.querySelectorAll('.format-date-time');
         dateTimeElements.forEach(element => {
@@ -1330,6 +1458,7 @@ sole.log('User Role:', window.userRole);
         });
     }
 
+
     // ==================== PAGINATION & FILTERING ====================
     const itemsPerPage = 12;
     let currentPage = 1;
@@ -1337,10 +1466,9 @@ sole.log('User Role:', window.userRole);
     let filteredItems = [];
     let currentView = 'list';
     let currentSortColumn = null;
-    let currentSortDirection = null; // null = original order, 'asc', 'desc'
-    let originalOrder = []; // Store original order for reset
+    let currentSortDirection = null;
+    let originalOrder = [];
 
-    // Preserve view state
     const urlParams = new URLSearchParams(window.location.search);
     const viewParam = urlParams.get('view');
 
@@ -1349,28 +1477,73 @@ sole.log('User Role:', window.userRole);
     } else if (localStorage.getItem('documentView')) {
         currentView = localStorage.getItem('documentView');
     }
+    window.addEventListener("pageshow", function (event) {
+    // This event fires even when coming back from another page (back/forward/navigation)
 
-    // Initialize on page load
+    // Clear inputs
+    document.getElementById('searchInput').value = '';
+    document.getElementById('tagFilter').value = '';
+    document.getElementById('classificationFilter').value = '';
+    document.getElementById('sortFilter').value = 'latest';
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+
+    // Hide clear button
+    document.getElementById('clearFiltersBtn').classList.remove('show');
+
+    // Reapply filters so page resets properly
+    applyAllFilters();
+});
+
+
+
     document.addEventListener('DOMContentLoaded', function() {
-        formatAllDates();
+    formatAllDates();
 
-        if (currentView === 'grid') {
-            toggleView('grid');
-        } else {
-            toggleView('list');
-        }
+    // Apply saved view (list/grid)
+    if (currentView === 'grid') {
+        toggleView('grid');
+    } else {
+        toggleView('list');
+    }
+    // Load all items from DOM
+    updateAllItems();
 
-        // Store original order and set default sorting to latest first
-        updateAllItems();
-        originalOrder = [...allItems];
+    // ===========================
+    // NEW FIX: SORT DOM ELEMENTS
+    // ===========================
+    sortDOMItems();  // <--- NEW FUNCTION (see below)
 
-        // Apply default sorting: Latest Upload (newest first)
-        sortByLatestUpload();
+    // Save original order AFTER sorting
+    originalOrder = [...allItems];
 
-        toggleClearButton();
+    // Apply filters + pagination
+    applyAllFilters();
+    toggleClearButton();
+    bindClicks();
+    showContent();
+});
+
+function sortDOMItems() {
+    // Step 1: Sort allItems by upload date (newest first)
+    allItems.sort((a, b) => {
+        const dateA = parseDate(getUploadDateFromElement(a));
+        const dateB = parseDate(getUploadDateFromElement(b));
+        return dateB - dateA; // newest first
     });
 
-    // Default sort by latest upload
+    // Step 2: Reattach sorted elements back into DOM
+    if (currentView === 'list') {
+        const tbody = document.querySelector('#documentsTable tbody');
+        allItems.forEach(item => tbody.appendChild(item));
+    } else {
+        const grid = document.querySelector('.documents-grid');
+        allItems.forEach(item => grid.appendChild(item));
+    }
+}
+
+
+
     function sortByLatestUpload() {
         filteredItems = [...allItems];
         filteredItems.sort((a, b) => {
@@ -1382,7 +1555,6 @@ sole.log('User Role:', window.userRole);
         displayPage(1);
     }
 
-    // Update all items array
     function updateAllItems() {
         if (currentView === 'list') {
             const tableBody = document.querySelector('#documentsTable tbody');
@@ -1393,34 +1565,38 @@ sole.log('User Role:', window.userRole);
         }
     }
 
-    // Toggle view
     function toggleView(view) {
-        currentView = view;
-        localStorage.setItem('documentView', view);
+    currentView = view;
+    localStorage.setItem('documentView', view);
 
-        const listView = document.getElementById('listView');
-        const gridView = document.getElementById('gridView');
-        const listBtn = document.getElementById('listViewBtn');
-        const gridBtn = document.getElementById('gridViewBtn');
+    const listView = document.getElementById('listView');
+    const gridView = document.getElementById('gridView');
+    const listBtn = document.getElementById('listViewBtn');
+    const gridBtn = document.getElementById('gridViewBtn');
 
-        if (view === 'grid') {
-            listView.style.display = 'none';
-            gridView.style.display = 'block';
-            listBtn.classList.remove('active');
-            gridBtn.classList.add('active');
-        } else {
-            listView.style.display = 'block';
-            gridView.style.display = 'none';
-            gridBtn.classList.remove('active');
-            listBtn.classList.add('active');
-        }
-
-        updateAllItems();
-        originalOrder = [...allItems];
-        applyAllFilters();
+    if (view === 'grid') {
+        listView.style.display = 'none';
+        gridView.style.display = 'block';
+        listBtn.classList.remove('active');
+        gridBtn.classList.add('active');
+    } else {
+        listView.style.display = 'block';
+        gridView.style.display = 'none';
+        gridBtn.classList.remove('active');
+        listBtn.classList.add('active');
     }
 
-    // Display specific page
+    updateAllItems();
+
+    // 🔥 NEW: Always sort after switching view
+    sortDOMItems();
+
+    originalOrder = [...allItems];
+    applyAllFilters();
+    bindClicks();
+}
+
+
     function displayPage(page) {
         currentPage = page;
         const start = (page - 1) * itemsPerPage;
@@ -1435,9 +1611,9 @@ sole.log('User Role:', window.userRole);
         document.getElementById('currentCount').textContent = filteredItems.length;
 
         renderPaginationButtons();
+        bindClicks();
     }
 
-    // Render pagination buttons
     function renderPaginationButtons() {
         const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
         const paginationUl = document.getElementById('pagination');
@@ -1468,19 +1644,16 @@ sole.log('User Role:', window.userRole);
         paginationUl.appendChild(nextLi);
     }
 
-    // Change page
     function changePage(page) {
         const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
         if (page < 1 || page > totalPages) return;
         displayPage(page);
     }
 
-    // Search documents
     function searchDocuments() {
         applyAllFilters();
     }
 
-    // COMBINED FILTER FUNCTION
     function applyAllFilters() {
         const searchTerm = document.getElementById('searchInput').value.toLowerCase();
         const tagFilter = document.getElementById('tagFilter').value.toLowerCase();
@@ -1490,38 +1663,49 @@ sole.log('User Role:', window.userRole);
         const endDate = document.getElementById('endDate').value;
 
         filteredItems = allItems.filter(item => {
-            const text = item.textContent.toLowerCase();
+            let matchesSearch = true;
 
-            // Search filter
-            const matchesSearch = !searchTerm || text.includes(searchTerm);
+        if (searchTerm) {
 
-            // Tag filter
+            const title = (item.getAttribute('data-title') || '').toLowerCase();
+            const code = (item.getAttribute('data-code') || '').toLowerCase();
+            const edition = (item.getAttribute('data-Edition') || '').toLowerCase();
+
+            const tagsData = (item.getAttribute('data-tags') || '').toLowerCase();
+            const classData = (item.getAttribute('data-classifications') || '').toLowerCase();
+
+            // Search in ALL fields
+            matchesSearch =
+                title.includes(searchTerm) ||
+                code.includes(searchTerm)  ||
+                edition.includes(searchTerm) ||
+                tagsData.includes(searchTerm) ||      // FULL TAG SEARCH
+                classData.includes(searchTerm);       // FULL CLASSIFICATION SEARCH
+        }
+
+
             let matchesTag = true;
             if (tagFilter) {
                 const tagsData = item.getAttribute('data-tags');
                 if (tagsData) {
                     const tags = tagsData.toLowerCase().split(',').map(t => t.trim());
-                    matchesTag = tags.some(tag => tag.includes(tagFilter) || tagFilter.includes(tag));
+                    matchesTag = tags.some(t => t === tagFilter);
                 } else {
                     matchesTag = false;
                 }
             }
 
-            // Classification filter
             let matchesClassification = true;
             if (classificationFilter) {
                 const classificationsData = item.getAttribute('data-classifications');
                 if (classificationsData) {
                     const classifications = classificationsData.toLowerCase().split(',').map(c => c.trim());
-                    matchesClassification = classifications.some(classification =>
-                        classification.includes(classificationFilter) || classificationFilter.includes(classification)
-                    );
+                    matchesClassification = classifications.some(c => c === classificationFilter);
                 } else {
                     matchesClassification = false;
                 }
             }
 
-            // Date filter
             let matchesDate = true;
             if (startDate || endDate) {
                 const uploadDateText = getUploadDateFromElement(item);
@@ -1545,16 +1729,12 @@ sole.log('User Role:', window.userRole);
             return matchesSearch && matchesTag && matchesClassification && matchesDate;
         });
 
-        // Apply sorting
         applySorting(sortValue);
-
-        // Update display
         currentPage = 1;
         displayPage(1);
         toggleClearButton();
     }
 
-    // Helper function to get upload date
     function getUploadDateFromElement(item) {
         const uploadDateAttr = item.getAttribute('data-upload-date');
         if (uploadDateAttr && uploadDateAttr.trim() !== '') {
@@ -1580,7 +1760,6 @@ sole.log('User Role:', window.userRole);
         return null;
     }
 
-    // Parse date string
     function parseDate(dateStr) {
         if (!dateStr) return new Date();
 
@@ -1638,7 +1817,6 @@ sole.log('User Role:', window.userRole);
         return new Date();
     }
 
-    // Apply sorting
     function applySorting(sortValue) {
         if (sortValue === 'latest') {
             filteredItems.sort((a, b) => {
@@ -1669,7 +1847,6 @@ sole.log('User Role:', window.userRole);
         }
     }
 
-    // Get title from element
     function getTitleFromElement(item) {
         if (currentView === 'list') {
             const titleDiv = item.querySelector('.doc-title span');
@@ -1680,28 +1857,23 @@ sole.log('User Role:', window.userRole);
         }
     }
 
-    // TABLE SORTING FUNCTION WITH 3-CLICK CYCLE
     function sortTable(column) {
         if (currentView !== 'list') return;
 
         const headers = document.querySelectorAll('.data-grid-table thead th');
 
-        // Implement 3-click cycle: asc -> desc -> reset
         if (currentSortColumn === column) {
-            // Same column clicked
             if (currentSortDirection === 'asc') {
                 currentSortDirection = 'desc';
             } else if (currentSortDirection === 'desc') {
-                currentSortDirection = null; // Reset
+                currentSortDirection = null;
                 currentSortColumn = null;
             }
         } else {
-            // New column clicked
             currentSortColumn = column;
             currentSortDirection = 'asc';
         }
 
-        // Update header styling
         headers.forEach(th => {
             th.classList.remove('sorted-asc', 'sorted-desc');
         });
@@ -1715,7 +1887,6 @@ sole.log('User Role:', window.userRole);
             clickedHeader.classList.add(currentSortDirection === 'asc' ? 'sorted-asc' : 'sorted-desc');
         }
 
-        // If reset (null), restore original order
         if (currentSortDirection === null) {
             filteredItems = filteredItems.sort((a, b) => {
                 return originalOrder.indexOf(a) - originalOrder.indexOf(b);
@@ -1724,7 +1895,6 @@ sole.log('User Role:', window.userRole);
             return;
         }
 
-        // Sort filtered items
         filteredItems.sort((a, b) => {
             let valueA, valueB;
 
@@ -1737,9 +1907,9 @@ sole.log('User Role:', window.userRole);
                     valueA = a.getAttribute('data-code') || '';
                     valueB = b.getAttribute('data-code') || '';
                     break;
-                case 'version':
-                    valueA = a.getAttribute('data-version') || '';
-                    valueB = b.getAttribute('data-version') || '';
+                case 'Edition':
+                    valueA = a.getAttribute('data-Edition') || '';
+                    valueB = b.getAttribute('data-Edition') || '';
                     break;
                 case 'publishDate':
                     valueA = parseDate(a.getAttribute('data-publish-date') || '');
@@ -1763,8 +1933,74 @@ sole.log('User Role:', window.userRole);
 
         displayPage(currentPage);
     }
+    // Bind row/card click AND stop action-button clicks from bubbling
+        function bindClicks() {
 
-    // Toggle clear button
+            // -------- LIST VIEW ROWS ----------
+            const rows = document.querySelectorAll('#documentsTable tbody');
+
+            rows.forEach(row => {
+
+                const mainLink = row.querySelector('.doc-main-link');
+
+                row.removeEventListener('click', row._rowClickHandler);
+                row._rowClickHandler = function(e) {
+
+                    // ignore if click is from an action button
+                    if (e.target.closest('.col-actions')) return;
+
+                    if (mainLink) {
+                        window.location.href = mainLink.href;
+                    }
+                };
+
+                row.addEventListener('click', row._rowClickHandler);
+
+                // Cursor pointer
+                row.style.cursor = 'pointer';
+
+                // Stop action buttons from triggering row click
+                const actionBtns = row.querySelectorAll('.col-actions a, .col-actions button, .action-btn, .btn-sm');
+                actionBtns.forEach(btn => {
+                    btn.addEventListener('click', evt => evt.stopPropagation());
+                });
+            });
+
+
+
+            // -------- GRID VIEW CARDS ---------
+            const cards = document.querySelectorAll('.document-card');
+
+            cards.forEach(card => {
+
+                const mainLink = card.querySelector('.doc-main-link');
+
+                card.removeEventListener('click', card._cardClickHandler);
+                card._cardClickHandler = function(e) {
+
+                    if (e.target.closest('.card-actions')) return;
+
+                    if (mainLink) {
+                        window.location.href = mainLink.href;
+                    }
+                };
+
+                card.addEventListener('click', card._cardClickHandler);
+
+                // Cursor pointer
+                card.style.cursor = 'pointer';
+
+                // Stop action clicks
+                const actionBtns = card.querySelectorAll('.card-actions a, .card-actions button, .action-btn, .btn-sm');
+                actionBtns.forEach(btn => {
+                    btn.addEventListener('click', evt => evt.stopPropagation());
+                });
+            });
+        }
+
+
+
+
     function toggleClearButton() {
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
@@ -1780,7 +2016,6 @@ sole.log('User Role:', window.userRole);
         }
     }
 
-    // Clear all filters
     function clearAllFilters() {
         document.getElementById('startDate').value = '';
         document.getElementById('endDate').value = '';
@@ -1791,7 +2026,6 @@ sole.log('User Role:', window.userRole);
         applyAllFilters();
     }
 
-    // Auto-dismiss alerts
     setTimeout(() => {
         const alerts = document.querySelectorAll('.alert');
         alerts.forEach(alert => {
@@ -1800,7 +2034,6 @@ sole.log('User Role:', window.userRole);
         });
     }, 5000);
 
-    // Show delete modal
     function showDeleteModal(element) {
         const docId = element.getAttribute('data-doc-id');
         const docTitle = element.getAttribute('data-doc-title');
@@ -1814,7 +2047,6 @@ sole.log('User Role:', window.userRole);
         deleteModal.show();
     }
 
-    // Show download modal
     function showDownloadModal(element) {
         const docId = element.getAttribute('data-doc-id');
         const docTitle = element.getAttribute('data-doc-title');
@@ -1851,7 +2083,6 @@ sole.log('User Role:', window.userRole);
         const downloadModal = new bootstrap.Modal(document.getElementById('downloadModal'));
         downloadModal.show();
     }
-
 </script>
 
 </body>

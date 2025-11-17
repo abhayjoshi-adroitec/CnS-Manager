@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -430,7 +431,9 @@ public class AuthController {
         return "profile";
     }
 
-    // Handle profile update
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @PostMapping("/profile/update")
     public String updateProfile(@Valid @ModelAttribute("user") UserDto userDto,
                                 BindingResult result,
@@ -440,19 +443,10 @@ public class AuthController {
 
         String username = principal != null ? principal.getName() : "Unknown";
 
-        // Validation failure
         if (result.hasErrors()) {
             model.addAttribute("user", userDto);
-            List<Role> roles = roleRepository.findAll();
-            model.addAttribute("roles", roles);
-
-            // LOG FAILURE - EDIT_PROFILE_FAILED
-            activityLogService.logByUsername(
-                    username,
-                    ActivityLogService.EDIT_PROFILE_FAILED,
-                    "Validation failed while editing own profile"
-            );
-
+            model.addAttribute("roles", roleRepository.findAll());
+            activityLogService.logByUsername(username, ActivityLogService.EDIT_PROFILE_FAILED, "Validation failed while editing profile");
             return "profile";
         }
 
@@ -462,44 +456,65 @@ public class AuthController {
         }
 
         try {
-            // Try stored procedure first
-            try {
-                userService.editUserProfileWithStoredProcedure(username, userDto);
-                logger.info("Profile updated using stored procedure: {}", username);
+            String rawCurrent = userDto.getCurrentPassword();
+            String newPassword = userDto.getNewPassword();
+            String confirmPassword = userDto.getConfirmPassword();
+            String encodedFromDb = loggedInUser.getPassword();
 
-                // LOG SUCCESS - EDIT_PROFILE
-                activityLogService.logByUsername(
-                        username,
-                        ActivityLogService.EDIT_PROFILE,
-                        "Updated own profile successfully"
-                );
+            logger.debug("CurrentPassword={}, NewPassword={}, ConfirmPassword={}",
+                    userDto.getCurrentPassword(),
+                    userDto.getNewPassword(),
+                    userDto.getConfirmPassword());
 
-                redirectAttributes.addFlashAttribute("success", "Profile updated successfully!");
-            } catch (RuntimeException e) {
-                logger.warn("Stored procedure failed, using fallback: {}", e.getMessage());
 
-                // Fallback to standard edit
-                userService.editUser(userDto, loggedInUser.getId());
+            // If user is trying to change password, validate current password first
+            if (rawCurrent != null && !rawCurrent.isBlank()) {
 
-                // LOG SUCCESS - EDIT_PROFILE
-                activityLogService.logByUsername(
-                        username,
-                        ActivityLogService.EDIT_PROFILE,
-                        "Updated own profile successfully (via fallback method)"
-                );
+                // Basic sanity checks
+                if (encodedFromDb == null || encodedFromDb.isBlank()) {
+                    logger.warn("User {} has no encoded password in DB.", username);
+                    redirectAttributes.addFlashAttribute("error", "Unable to verify current password.");
+                    activityLogService.logByUsername(username, ActivityLogService.EDIT_PROFILE_FAILED, "No password stored for user");
+                    return "redirect:/profile";
+                }
 
-                redirectAttributes.addFlashAttribute("success", "Profile updated successfully!");
+                // Trim raw input to avoid accidental spaces
+                rawCurrent = rawCurrent.trim();
+
+                // DEBUG info (remove in production) — never log the raw password itself
+                logger.debug("Verifying password for user '{}'. encoded length: {}", username, encodedFromDb.length());
+
+                boolean matches = passwordEncoder.matches(rawCurrent, encodedFromDb);
+                logger.debug("Password match result: {}", matches);
+
+                if (!matches) {
+                    redirectAttributes.addFlashAttribute("passwordError", "current");
+                    activityLogService.logByUsername(username, ActivityLogService.EDIT_PROFILE_FAILED, "Incorrect current password entered");
+                    return "redirect:/profile#changePasswordModal";
+                }
+
+                // Check new/confirm match
+                if (newPassword == null || confirmPassword == null || !newPassword.equals(confirmPassword)) {
+                    redirectAttributes.addFlashAttribute("passwordError", "mismatch");
+                    return "redirect:/profile#changePasswordModal";
+                }
+
+                // Encode and set new password (do NOT encode original DB password)
+                loggedInUser.setPassword(passwordEncoder.encode(newPassword));
             }
+
+            // Update other fields (example)
+            loggedInUser.setFirstName(userDto.getFirstName());
+            loggedInUser.setEmail(userDto.getEmail());
+//            loggedInUser.setMobile(userDto.getMobile());
+
+            userRepository.save(loggedInUser);
+
+            activityLogService.logByUsername(username, ActivityLogService.EDIT_PROFILE, "Profile updated successfully");
+            redirectAttributes.addFlashAttribute("success", "Profile updated successfully!");
         } catch (Exception e) {
             logger.error("Failed to update profile", e);
-
-            // LOG FAILURE - EDIT_PROFILE_FAILED
-            activityLogService.logByUsername(
-                    username,
-                    ActivityLogService.EDIT_PROFILE_FAILED,
-                    "Failed to update own profile: " + e.getMessage()
-            );
-
+            activityLogService.logByUsername(username, ActivityLogService.EDIT_PROFILE_FAILED, "Failed to update own profile: " + e.getMessage());
             redirectAttributes.addFlashAttribute("error", "Failed to update profile: " + e.getMessage());
         }
 
@@ -997,6 +1012,30 @@ public class AuthController {
             model.addAttribute("allTags", tagService.getAllTags());
             model.addAttribute("allClassifications", classificationService.getAllClassifications());
             return "edit-document";
+        }
+    }
+
+    @Autowired
+
+    private NetworkFileService fileStorageService;
+
+    @PreAuthorize("hasAuthority('Admin')")
+    @GetMapping("/diagnose-network-share")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> diagnoseNetworkShare() {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            response.put("host", networkFileService.getHost());
+            response.put("share", networkFileService.getShareName());
+            response.put("folder", networkFileService.getFolder());
+
+            Map<String, Object> permissions = networkFileService.checkPermissions();
+            response.put("permissions", permissions);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 
