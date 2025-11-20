@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tags Management - Codes & Standards</title>
-<!--    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">-->
+    <!--    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">-->
     <link rel="stylesheet" href="/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <!-- Include Sidebar Styles -->
@@ -38,6 +38,7 @@
             margin-bottom: 15px;
             transition: all 0.3s;
             position: relative;
+            cursor: pointer;
         }
         .tag-item:hover {
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
@@ -197,6 +198,71 @@
 
         #scrollTopBtn:hover {
             background-color:#1e3a5f;
+        }
+
+        /* Documents Modal Styles */
+        .documents-modal-content {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .document-list-item {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e5e7eb;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .document-list-item:last-child {
+            border-bottom: none;
+        }
+
+        .document-list-item:hover {
+            background-color: #f3f4f6;
+        }
+
+        .document-list-item i {
+            color: #4DA3FF;
+            font-size: 1.1rem;
+        }
+
+        .document-list-item span {
+            color: #1a2332;
+            font-size: 0.95rem;
+            flex: 1;
+        }
+
+        .document-list-item .open-icon {
+            color: #9ca3af;
+            font-size: 0.85rem;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .document-list-item:hover .open-icon {
+            opacity: 1;
+            color: #4DA3FF;
+        }
+
+        .no-documents-message {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6b7a99;
+        }
+
+        .no-documents-message i {
+            font-size: 3rem;
+            opacity: 0.3;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .documents-loading {
+            text-align: center;
+            padding: 40px 20px;
         }
 
     </style>
@@ -390,6 +456,32 @@
         </div>
     </div>
 </div>
+
+<!-- Documents by Tag Modal -->
+<div class="modal fade" id="documentsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-3 shadow">
+            <div class="modal-header" style="background-color: #4DA3FF; color:#ffffff;">
+                <h5 class="modal-title">
+                    <i class="bi bi-files me-2"></i>Documents using tag: <span id="documentsModalTagName"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="documents-loading" id="documentsLoading">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading documents...</p>
+                </div>
+                <div class="documents-modal-content" id="documentsListContainer">
+                    <!-- Documents will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Scroll to Top Button -->
 <button id="scrollTopBtn" title="Go to top">
     <i class="bi bi-arrow-up"></i>
@@ -405,7 +497,7 @@
     const API_BASE_URL = '/api/tags';
 
     let allTags = [];
-    let createModal, editModal, deleteModal;
+    let createModal, editModal, deleteModal, documentsModal;
     let deleteTagId = null;
 
     // Get user role from hidden input (populated by Thymeleaf from navbar)
@@ -423,6 +515,7 @@
         createModal = new bootstrap.Modal(document.getElementById('createTagModal'));
         editModal = new bootstrap.Modal(document.getElementById('editTagModal'));
         deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        documentsModal = new bootstrap.Modal(document.getElementById('documentsModal'));
 
         // Apply role-based restrictions
         applyRoleBasedRestrictions();
@@ -567,11 +660,11 @@ function createTagElement(tag) {
     const actionsHTML = canManage ? `
         <div class="tag-hover-actions">
             <button class="btn-icon edit-btn" title="Edit"
-                onclick="openEditModal(${tag.id}, '${escapeHtml(tag.tagName).replace(/'/g, "\\'")}')">
+                onclick="event.stopPropagation(); openEditModal(${tag.id}, '${escapeHtml(tag.tagName).replace(/'/g, "\\'")}')">
                 <i class="bi bi-pencil"></i>
             </button>
             <button class="btn-icon delete-btn" title="Delete"
-                onclick="openDeleteModal(${tag.id}, '${escapeHtml(tag.tagName).replace(/'/g, "\\'")}', ${tag.documentCount || 0})">
+                onclick="event.stopPropagation(); openDeleteModal(${tag.id}, '${escapeHtml(tag.tagName).replace(/'/g, "\\'")}', ${tag.documentCount || 0})">
                 <i class="bi bi-trash"></i>
             </button>
         </div>
@@ -617,9 +710,95 @@ function createTagElement(tag) {
         </div>
     `;
 
+    // Add click event to open documents modal
+    div.addEventListener('click', function(e) {
+        // Don't trigger if clicking on action buttons
+        if (e.target.closest('.tag-hover-actions')) {
+            return;
+        }
+        openDocumentsModal(tag.id, tag.tagName);
+    });
+
     return div;
 }
 
+    // Open documents modal
+    async function openDocumentsModal(tagId, tagName) {
+        // Set the tag name in modal title
+        document.getElementById('documentsModalTagName').textContent = tagName;
+
+        // Show loading state
+        document.getElementById('documentsLoading').style.display = 'block';
+        document.getElementById('documentsListContainer').innerHTML = '';
+
+        // Show modal
+        documentsModal.show();
+
+        try {
+            // Fetch documents for this tag
+            const response = await fetch(`${API_BASE_URL}/${tagId}/documents`, {
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const documents = await response.json();
+
+            // Hide loading
+            document.getElementById('documentsLoading').style.display = 'none';
+
+            // Display documents
+            displayDocumentsInModal(documents);
+
+        } catch (error) {
+            console.error('Error loading documents:', error);
+            document.getElementById('documentsLoading').style.display = 'none';
+            document.getElementById('documentsListContainer').innerHTML = `
+                <div class="no-documents-message">
+                    <i class="bi bi-exclamation-circle"></i>
+                    <p>Failed to load documents. Please try again.</p>
+                </div>
+            `;
+        }
+    }
+
+    // Display documents in modal
+    function displayDocumentsInModal(documents) {
+        const container = document.getElementById('documentsListContainer');
+
+        if (!documents || documents.length === 0) {
+            container.innerHTML = `
+                <div class="no-documents-message">
+                    <i class="bi bi-file-earmark-x"></i>
+                    <p>No documents using this tag</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        documents.forEach(doc => {
+            html += `
+                <div class="document-list-item" onclick="openDocument(${doc.id})">
+                    <i class="bi bi-file-earmark-text"></i>
+                    <span>${escapeHtml(doc.title)}</span>
+                    <i class="bi bi-box-arrow-up-right open-icon"></i>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    // Open document in DocViewer
+    function openDocument(docId) {
+        window.open(`/DocViewer?id=${docId}`, '_blank');
+    }
 
     // Handle create tag
 async function handleCreateTag(e) {

@@ -157,6 +157,23 @@ public class TagController {
         return ResponseEntity.ok(tagService.getTagsEditedByUser(getCurrentUserId()));
     }
 
+    // 🔹 NEW ENDPOINT - Get documents by tag ID -----------------------------------------------------
+
+    /**
+     * Get all documents that are using a specific tag
+     * Returns list of documents with id and title
+     */
+    @GetMapping("/{id}/documents")
+    public ResponseEntity<List<Map<String, Object>>> getDocumentsByTag(@PathVariable Long id) {
+        try {
+            List<Map<String, Object>> documents = tagService.getDocumentsByTagId(id);
+            return ResponseEntity.ok(documents);
+        } catch (Exception e) {
+            logger.error("Failed to fetch documents for tag ID: " + id, e);
+            throw e;
+        }
+    }
+
     // 🔹 Utility methods -----------------------------------------------------
 
     private Long getCurrentUserId() {

@@ -1262,41 +1262,42 @@ public class AuthController {
         }
     }
 
+    //19.11.2025
 
-    @PreAuthorize("hasAnyAuthority('Manager', 'Admin')")
-    @GetMapping("/documents/download-watermarked/{id}")
-    public ResponseEntity<byte[]> downloadWatermarkedDocument(@PathVariable Long id, Principal principal) {
-        try {
-            DocumentDto document = documentService.findDocumentById(id);
-
-            String filePath = documentService.getFilePath(id);
-            logger.info("Downloading watermarked document from viewer: {} for user: {}",
-                    document.getTitle(), principal.getName());
-
-            // Read original PDF from network share
-            byte[] originalPdfBytes = networkFileService.readFileFromNetworkShare(filePath);
-
-            // Add watermark
-            byte[] watermarkedPdfBytes = watermarkService.addWatermarkToPdf(
-                    originalPdfBytes,
-                    principal.getName()
-            );
-
-            String watermarkedFilename = "WATERMARKED_" + document.getTitle() + ".pdf";
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + watermarkedFilename + "\"")
-                    .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(watermarkedPdfBytes.length))
-                    .body(watermarkedPdfBytes);
-
-        } catch (Exception e) {
-            logger.error("Failed to download watermarked document from viewer", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .contentType(MediaType.TEXT_PLAIN)
-                    .body(("Error downloading document: " + e.getMessage()).getBytes());
-        }
-    }
+//    @PreAuthorize("hasAnyAuthority('Manager', 'Admin')")
+//    @GetMapping("/documents/download-watermarked/{id}")
+//    public ResponseEntity<byte[]> downloadWatermarkedDocument(@PathVariable Long id, Principal principal) {
+//        try {
+//            DocumentDto document = documentService.findDocumentById(id);
+//
+//            String filePath = documentService.getFilePath(id);
+//            logger.info("Downloading watermarked document from viewer: {} for user: {}",
+//                    document.getTitle(), principal.getName());
+//
+//            // Read original PDF from network share
+//            byte[] originalPdfBytes = networkFileService.readFileFromNetworkShare(filePath);
+//
+//            // Add watermark
+//            byte[] watermarkedPdfBytes = watermarkService.addWatermarkToPdf(
+//                    originalPdfBytes,
+//                    principal.getName()
+//            );
+//
+//            String watermarkedFilename = "WATERMARKED_" + document.getTitle() + ".pdf";
+//
+//            return ResponseEntity.ok()
+//                    .contentType(MediaType.APPLICATION_PDF)
+//                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + watermarkedFilename + "\"")
+//                    .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(watermarkedPdfBytes.length))
+//                    .body(watermarkedPdfBytes);
+//
+//        } catch (Exception e) {
+//            logger.error("Failed to download watermarked document from viewer", e);
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                    .contentType(MediaType.TEXT_PLAIN)
+//                    .body(("Error downloading document: " + e.getMessage()).getBytes());
+//        }
+//    }
 
     //Every user have their own bookmark -AJ
     @Autowired

@@ -13,6 +13,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +29,7 @@ public class ClassificationController {
     private final ClassificationService classificationService;
     private final UserRepository userRepository;
     private final ActivityLogService activityLogService; // ✅ Add ActivityLogService
+    private static final Logger logger = LoggerFactory.getLogger(ClassificationController.class);
 
     @PostMapping
     public ResponseEntity<ClassificationDto> createClassification(@Valid @RequestBody ClassificationDto classificationDto) {
@@ -137,6 +140,23 @@ public class ClassificationController {
     @GetMapping("/my-edited-classifications")
     public ResponseEntity<List<ClassificationDto>> getMyEditedClassifications() {
         return ResponseEntity.ok(classificationService.getClassificationsEditedByUser(getCurrentUserId()));
+    }
+
+    // 🔹 NEW ENDPOINT - Get documents by classification ID -----------------------------------------------------
+
+    /**
+     * Get all documents that are using a specific classification
+     * Returns list of documents with id and title
+     */
+    @GetMapping("/{id}/documents")
+    public ResponseEntity<List<Map<String, Object>>> getDocumentsByClassification(@PathVariable Long id) {
+        try {
+            List<Map<String, Object>> documents = classificationService.getDocumentsByClassificationId(id);
+            return ResponseEntity.ok(documents);
+        } catch (Exception e) {
+            logger.error("Failed to fetch documents for classification ID: " + id, e);
+            throw e;
+        }
     }
 
     // ✅ Utility: Get User ID

@@ -61,6 +61,9 @@ public class ActivityLogsController {
         Long countSuccessLogs = activityLogService.countSuccessLogs();
         Long countFailedLogs = activityLogService.countFailedLogs();
 
+        // Count download logs (both successful and failed)
+        long countDownloadLogs = logs.stream()     .filter(log -> "DOCUMENT_DOWNLOAD".equals(log.getAction()))     .count();
+
 
         model.addAttribute("logs", logs);
         model.addAttribute("userMap", userMap);
@@ -68,6 +71,7 @@ public class ActivityLogsController {
         model.addAttribute("totalLogs", logs.size());
         model.addAttribute("countSuccessLogs", countSuccessLogs);
         model.addAttribute("countFailedLogs", countFailedLogs);
+        model.addAttribute("countDownloadLogs", countDownloadLogs);
 
         return "activity-logs";
     }

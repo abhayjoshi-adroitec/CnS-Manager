@@ -41,7 +41,7 @@ public class Tag {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
             name = "created_by",
-            nullable = false,
+            nullable = true,
             foreignKey = @ForeignKey(name = "fk_tags_created_by")
     )
     private User createdBy;
@@ -53,7 +53,8 @@ public class Tag {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
             name = "updated_by",
-            foreignKey = @ForeignKey(name = "fk_tags_updated_by")
+            nullable = true,
+            foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT)
     )
     private User updatedBy;
 

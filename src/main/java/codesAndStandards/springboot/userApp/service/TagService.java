@@ -5,6 +5,7 @@ import codesAndStandards.springboot.userApp.dto.TagDto;
 import codesAndStandards.springboot.userApp.entity.Tag;
 
 import java.util.List;
+import java.util.Map;
 
 public interface TagService {
 
@@ -24,4 +25,5 @@ public interface TagService {
     void createTagIfNotExists(String tagName, Long userId);
     Tag getOrCreateTag(String tagName, Long userId);
     List<Tag> getOrCreateTags(List<String> tagNames, Long userId);
+    List<Map<String, Object>> getDocumentsByTagId(Long tagId);
 }

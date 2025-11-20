@@ -3,9 +3,12 @@ package codesAndStandards.springboot.userApp.service.Impl;
 import codesAndStandards.springboot.userApp.dto.UserDto;
 import codesAndStandards.springboot.userApp.entity.Role;
 import codesAndStandards.springboot.userApp.entity.User;
+import codesAndStandards.springboot.userApp.repository.ClassificationRepository;
 import codesAndStandards.springboot.userApp.repository.RoleRepository;
+import codesAndStandards.springboot.userApp.repository.TagRepository;
 import codesAndStandards.springboot.userApp.repository.UserRepository;
 import codesAndStandards.springboot.userApp.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -441,5 +444,27 @@ public class UserServiceImpl implements UserService {
 //    @Transactional(readOnly = true)
     public Optional<User> findById(Long id) {
         return userRepository.findById(id);
+    }
+
+    @Autowired
+    private TagRepository tagRepository;
+
+    @Autowired
+    private ClassificationRepository classificationRepository;
+
+    public void deleteUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Clear tag references
+        tagRepository.clearCreatedByUser(userId);
+        tagRepository.clearUpdatedByUser(userId);
+
+        // Clear classification references
+        classificationRepository.clearCreatedByUser(userId);
+        classificationRepository.clearUpdatedByUser(userId);
+
+        // Now delete the user
+        userRepository.delete(user);
     }
 }

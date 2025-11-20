@@ -1,10 +1,12 @@
 package codesAndStandards.springboot.userApp.service.Impl;
 
 import codesAndStandards.springboot.userApp.dto.TagDto;
+import codesAndStandards.springboot.userApp.entity.Document;
 import codesAndStandards.springboot.userApp.entity.Tag;
 import codesAndStandards.springboot.userApp.entity.User;
 import codesAndStandards.springboot.userApp.exception.ResourceNotFoundException;
 import codesAndStandards.springboot.userApp.exception.UnauthorizedException;
+import codesAndStandards.springboot.userApp.repository.DocumentRepository;
 import codesAndStandards.springboot.userApp.repository.TagRepository;
 import codesAndStandards.springboot.userApp.repository.UserRepository;
 import codesAndStandards.springboot.userApp.service.TagService;
@@ -12,7 +14,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,6 +26,7 @@ public class TagServiceImpl implements TagService {
 
     private final TagRepository tagRepository;
     private final UserRepository userRepository;
+    private final DocumentRepository documentRepository;
 
     @Override
     @Transactional
@@ -52,6 +58,28 @@ public class TagServiceImpl implements TagService {
             // created_at is set automatically by @CreationTimestamp
             tagRepository.save(tag);
         }
+    }
+
+    @Override
+    public List<Map<String, Object>> getDocumentsByTagId(Long tagId) {
+        // Verify tag exists
+        if (!tagRepository.existsById(tagId)) {
+            throw new RuntimeException("Tag not found with id: " + tagId);
+        }
+
+        // Use repository query instead of lazy loading
+
+        List<Document> documents = documentRepository.findByTagId(tagId);
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Document doc : documents) {
+            Map<String, Object> docMap = new HashMap<>();
+            docMap.put("id", doc.getId());
+            docMap.put("title", doc.getTitle());
+            result.add(docMap);
+        }
+
+        return result;
     }
 
     @Override

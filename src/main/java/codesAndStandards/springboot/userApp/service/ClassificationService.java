@@ -3,6 +3,7 @@ package codesAndStandards.springboot.userApp.service;
 import codesAndStandards.springboot.userApp.dto.ClassificationDto;
 
 import java.util.List;
+import java.util.Map;
 
 public interface ClassificationService {
 
@@ -19,4 +20,6 @@ public interface ClassificationService {
     List<ClassificationDto> getClassificationsByUser(Long userId);
 
     List<ClassificationDto> getClassificationsEditedByUser(Long userId);
+
+    List<Map<String, Object>> getDocumentsByClassificationId(Long classificationId);
 }

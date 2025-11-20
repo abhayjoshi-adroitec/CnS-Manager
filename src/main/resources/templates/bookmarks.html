@@ -6,7 +6,7 @@
     <title>My Bookmarks - Codes & Standards</title>
     <meta name="_csrf" th:content="${_csrf.token}" />
     <meta name="_csrf_header" th:content="${_csrf.headerName}" />
-<!--    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">-->
+    <!--    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">-->
     <link rel="stylesheet" href="/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <!-- Include Sidebar Styles -->
@@ -215,7 +215,7 @@
             transition: all 0.2s;
             border: 1px solid transparent;
             position: relative;
-
+            cursor: pointer;
         }
 
         .bookmark-card-grid:hover {
@@ -324,6 +324,7 @@
             position: relative;
             display: flex;
             gap: 16px;
+            cursor: pointer;
         }
 
         .bookmark-card-list:hover {
@@ -695,17 +696,19 @@
             const productCode = escapeHtml(bookmark.documentCode || bookmark.productCode || 'N/A');
             const pageNumber = bookmark.pageNumber || 1;
             const description = escapeHtml(bookmark.description || bookmark.notes || '');
+            // Escape bookmark name for onclick attribute
+            const escapedBookmarkName = (bookmark.bookmarkName || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
 
             gridHTML += `
-                <div class="bookmark-card-grid">
+                <div class="bookmark-card-grid" onclick="handleCardClick(event, ${bookmark.documentId}, ${pageNumber})">
                     <div class="bookmark-actions">
-                        <button class="btn btn-sm btn-outline-view me-1" onclick="viewDocument(${bookmark.documentId}, ${pageNumber})" title="View Document">
+                        <button class="btn btn-sm btn-outline-view me-1" onclick="event.stopPropagation(); viewDocument(${bookmark.documentId}, ${pageNumber})" title="View Document">
                             <i class="bi bi-eye"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditModal(${bookmark.id}, '${bookmark.bookmarkName || ''}')" title="Edit Bookmark">
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation(); openEditModal(${bookmark.id}, '${escapedBookmarkName}')" title="Edit Bookmark">
                              <i class="bi bi-pencil"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="confirmDelete(${bookmark.id})" title="Delete Bookmark">
+                        <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); confirmDelete(${bookmark.id})" title="Delete Bookmark">
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
@@ -714,20 +717,11 @@
                     </div>
                     <div class="bookmark-title">${bookmarkName}</div>
                     <div class="bookmark-meta">
-<!--                        <div class="bookmark-meta-item">-->
-<!--                            <i class="bi bi-file-text"></i>-->
-<!--                            ${productCode}-->
-<!--                        </div>-->
-<!--                        <div class="bookmark-meta-item">-->
-<!--                            <i class="bi bi-file-earmark"></i>-->
-<!--                            Page ${pageNumber}-->
-<!--                        </div>-->
                         <div class="bookmark-meta-item">
                             <i class="bi bi-calendar3"></i>
                             ${date}
                         </div>
                     </div>
-<!--                    <div class="bookmark-description">${description || documentTitle}</div>-->
                     <div class="bookmark-footer">
                         <span style="font-size: 13px; color: #718096;">${documentTitle}</span>
                     </div>
@@ -745,17 +739,19 @@
             const productCode = escapeHtml(bookmark.documentCode || bookmark.productCode || 'N/A');
             const pageNumber = bookmark.pageNumber || 1;
             const description = escapeHtml(bookmark.description || bookmark.notes || '');
+            // Escape bookmark name for onclick attribute
+            const escapedBookmarkName = (bookmark.bookmarkName || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
 
             listHTML += `
-                <div class="bookmark-card-list">
+                <div class="bookmark-card-list" onclick="handleCardClick(event, ${bookmark.documentId}, ${pageNumber})">
                     <div class="bookmark-actions">
-                        <button class="btn btn-sm btn-outline-view me-1" onclick="viewDocument(${bookmark.documentId}, ${pageNumber})" title="View Document">
+                        <button class="btn btn-sm btn-outline-view me-1" onclick="event.stopPropagation(); viewDocument(${bookmark.documentId}, ${pageNumber})" title="View Document">
                             <i class="bi bi-eye"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditModal(${bookmark.id}, '${bookmark.bookmarkName || ''}')" title="Edit Bookmark">
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation(); openEditModal(${bookmark.id}, '${escapedBookmarkName}')" title="Edit Bookmark">
                              <i class="bi bi-pencil"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="confirmDelete(${bookmark.id})" title="Delete Bookmark">
+                        <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); confirmDelete(${bookmark.id})" title="Delete Bookmark">
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
@@ -765,20 +761,11 @@
                     <div class="bookmark-content">
                         <div class="bookmark-title">${bookmarkName}</div>
                         <div class="bookmark-meta">
-<!--                            <div class="bookmark-meta-item">-->
-<!--                                <i class="bi bi-file-text"></i>-->
-<!--                                ${productCode}-->
-<!--                            </div>-->
-<!--                            <div class="bookmark-meta-item">-->
-<!--                                <i class="bi bi-file-earmark"></i>-->
-<!--                                Page ${pageNumber}-->
-<!--                            </div>-->
                             <div class="bookmark-meta-item">
                                 <i class="bi bi-calendar3"></i>
                                 ${date}
                             </div>
                         </div>
-<!--                        <div class="bookmark-description">${description || documentTitle}</div>-->
                     <div class="bookmark-footer">
                         <span style="font-size: 13px; color: #718096;">${documentTitle}</span>
                     </div>
@@ -787,6 +774,15 @@
             `;
         });
         listContainer.innerHTML = listHTML;
+    }
+
+    // Handle card click - opens document in new tab
+    function handleCardClick(event, documentId, pageNumber) {
+        // Don't trigger if clicking on action buttons
+        if (event.target.closest('.bookmark-actions')) {
+            return;
+        }
+        viewDocument(documentId, pageNumber);
     }
 
     // Format date
@@ -832,10 +828,10 @@
         document.getElementById('totalCount').textContent = `${total} Total Bookmarks`;
     }
 
-    // ✅ View document - Navigate to DocViewer with page number
+    // ✅ View document - Navigate to DocViewer with page number (opens in new tab)
     function viewDocument(documentId, pageNumber) {
         if (documentId) {
-            window.location.href = `/DocViewer?id=${documentId}&page=${pageNumber || 1}`;
+            window.open(`/DocViewer?id=${documentId}&page=${pageNumber || 1}`, '_blank');
         }
     }
 

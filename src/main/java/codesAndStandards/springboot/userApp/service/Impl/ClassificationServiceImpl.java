@@ -2,16 +2,21 @@ package codesAndStandards.springboot.userApp.service.Impl;
 
 import codesAndStandards.springboot.userApp.dto.ClassificationDto;
 import codesAndStandards.springboot.userApp.entity.Classification;
+import codesAndStandards.springboot.userApp.entity.Document;
 import codesAndStandards.springboot.userApp.entity.User;
 import codesAndStandards.springboot.userApp.exception.ResourceNotFoundException;
 import codesAndStandards.springboot.userApp.repository.ClassificationRepository;
+import codesAndStandards.springboot.userApp.repository.DocumentRepository;
 import codesAndStandards.springboot.userApp.repository.UserRepository;
 import codesAndStandards.springboot.userApp.service.ClassificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,6 +25,7 @@ public class ClassificationServiceImpl implements ClassificationService {
 
     private final ClassificationRepository classificationRepository;
     private final UserRepository userRepository;
+    private final DocumentRepository documentRepository;
 
     @Override
     @Transactional
@@ -61,6 +67,27 @@ public class ClassificationServiceImpl implements ClassificationService {
 
         Classification updatedClassification = classificationRepository.save(classification);
         return mapToDto(updatedClassification);
+    }
+
+    @Override
+    public List<Map<String, Object>> getDocumentsByClassificationId(Long classificationId) {
+        // Verify classification exists
+        if (!classificationRepository.existsById(classificationId)) {
+            throw new RuntimeException("Classification not found with id: " + classificationId);
+        }
+
+        // Use repository query instead of lazy loading
+        List<Document> documents = documentRepository.findByClassificationId(classificationId);
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Document doc : documents) {
+            Map<String, Object> docMap = new HashMap<>();
+            docMap.put("id", doc.getId());
+            docMap.put("title", doc.getTitle());
+            result.add(docMap);
+        }
+
+        return result;
     }
 
     @Override
