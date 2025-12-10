@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="/bootstrap-icons/bootstrap-icons.css">
     <script src="/pdfjs/pdf.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <th:block th:replace="~{common/sidebar :: sidebar-styles}"></th:block>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
@@ -25,8 +27,8 @@
         .wizard-step-label{font-size:14px;font-weight:500;color:#6b7280;text-align:center}
         .wizard-step.active .wizard-step-label{color:#667eea;font-weight:600}
         .wizard-step.completed .wizard-step-label{color:#10b981}
-        .wizard-content{padding:40px 50px;min-height:450px}
-        .wizard-step-content{display:none}
+        .wizard-content{padding:40px 50px;min-height:450px;position:relative}
+        .wizard-step-content{display:none;height:100%}
         .wizard-step-content.active{display:block;animation:fadeIn .4s}
         @keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
         .wizard-navigation{display:flex;justify-content:space-between;padding:20px 50px 30px;border-top:1px solid #e5e7eb}
@@ -40,14 +42,16 @@
         .wizard-btn-success:hover{background:#059669}
         .wizard-btn-warning{background:#f59e0b;color:#fff}
         .wizard-btn-warning:hover{background:#d97706}
+
         .drop-zone{border:3px dashed #d1d5db;border-radius:12px;padding:80px 40px;text-align:center;background:linear-gradient(135deg,#fafbfc 0,#f0f7ff 100%);cursor:pointer;transition:all .3s;position:relative}
         .drop-zone:hover{border-color:#667eea;background:linear-gradient(135deg,#f0f7ff 0,#e0f2fe 100%);transform:scale(1.02)}
-        .drop-zone.dragover{border-color:#667eea;background:linear-gradient(135deg,#e0f2fe 0,#dbeafe 100%);border-style:solid;transform:scale(1.05)}
+        .drop-zone.dragover{border-color:#667eea;background:linear-gradient(135deg,#e0f7ff 0,#dbeafe 100%);border-style:solid;transform:scale(1.05)}
         .drop-zone-icon{width:80px;height:80px;margin:0 auto 20px;color:#667eea}
         .drop-zone-text{font-size:20px;color:#1a2332;margin-bottom:10px;font-weight:600}
         .drop-zone-info{font-size:14px;color:#6b7a99;margin-bottom:25px}
         .browse-btn{background:#667eea;color:#fff;padding:14px 36px;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;transition:all .3s;border:none;display:inline-flex;align-items:center;gap:10px}
         .browse-btn:hover{background:#5568d3;transform:translateY(-2px);box-shadow:0 4px 12px rgba(102,126,234,0.4)}
+
         .folder-uploaded-message{display:none;background:#ecfdf5;border:2px solid #10b981;border-radius:12px;padding:30px;margin-top:30px}
         .folder-uploaded-message.show{display:block;animation:slideIn .4s}
         @keyframes slideIn{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
@@ -64,12 +68,53 @@
         .file-name-wrapper{display:flex;align-items:center;gap:6px;flex:1;min-width:0}
         .file-name-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .protected-badge{display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:4px;font-size:11px}
+
         .info-box{background:#eff6ff;border-left:4px solid #3b82f6;padding:20px;border-radius:8px;margin-bottom:30px}
         .info-box-title{font-weight:600;color:#1e40af;margin-bottom:10px;display:flex;align-items:center;gap:8px}
         .info-box-content{color:#1e40af;font-size:14px;line-height:1.6}
         .download-template-btn{background:#10b981;color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:all .3s;display:inline-flex;align-items:center;gap:8px;text-decoration:none;margin-bottom:10px}
         .download-template-btn:hover{background:#059669;transform:translateY(-2px);color:#fff}
         .template-note{font-size:13px;color:#6b7280;margin-top:10px}
+
+        /* Step 4 self validation */
+        .self-validation-title{font-size:18px;font-weight:600;color:#1a2332}
+        .self-validation-info{font-size:12px;color:#6b7280;margin-top:4px}
+        .self-validation-table-wrapper{border-radius:8px;border:1px solid #e5e7eb;background:#fff;overflow:auto;max-height:100%}
+        table.self-validation-table{width:100%;border-collapse:collapse;font-size:12px}
+        table.self-validation-table thead{background:#f9fafb;position:sticky;top:0;z-index:1}
+        table.self-validation-table th,table.self-validation-table td{padding:6px 8px;border-bottom:1px solid #e5e7eb;vertical-align:middle}
+        table.self-validation-table th{font-weight:600;color:#4b5563;white-space:nowrap}
+        table.self-validation-table td input{width:100%;border-radius:6px;border:1px solid #d1d5db;padding:3px 5px;font-size:12px}
+        table.self-validation-table td input[readonly]{background-color:#f9fafb;color:#6b7280;cursor:not-allowed}
+
+        /* multi-select dropdown */
+        .multi-select-container{position:relative}
+        .multi-select-display{
+            display:flex;align-items:center;justify-content:space-between;
+            border:1px solid #d1d5db;border-radius:6px;padding:4px 6px;
+            background:#f9fafb;font-size:12px;cursor:pointer;
+        }
+        .multi-select-display span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .multi-select-panel{
+            position:absolute;top:100%;left:0;right:0;z-index:20;
+            background:#fff;border:1px solid #d1d5db;border-radius:6px;
+            margin-top:4px;max-height:220px;overflow-y:auto;
+            box-shadow:0 4px 12px rgba(0,0,0,0.15);
+        }
+        .multi-select-search{padding:6px 8px;border-bottom:1px solid #e5e7eb;}
+        .multi-select-search input{
+            width:100%;border-radius:4px;border:1px solid #d1d5db;
+            padding:4px 6px;font-size:12px;
+        }
+        .multi-select-option{
+            padding:6px 10px;display:flex;align-items:center;gap:8px;
+            font-size:12px;cursor:pointer;
+        }
+        .multi-select-option:hover{background:#f3f4f6;}
+        .multi-select-footer{
+            padding:6px 10px;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;
+        }
+
         .validation-results{background:#f9fafb;border-radius:12px;padding:25px;margin-bottom:20px}
         .validation-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
         .validation-title{font-size:18px;font-weight:600;color:#1a2332}
@@ -106,6 +151,7 @@
         .error-action-btn.reupload-excel:hover{background:#059669}
         .error-action-btn.upload-valid{background:#f59e0b;color:#fff}
         .error-action-btn.upload-valid:hover{background:#d97706}
+
         .progress-container{background:#f9fafb;border-radius:12px;padding:30px}
         .progress-header{text-align:center;margin-bottom:30px}
         .progress-title{font-size:20px;font-weight:600;color:#1a2332;margin-bottom:10px}
@@ -121,6 +167,7 @@
         .log-icon.success{background:#d1fae5;color:#10b981}
         .log-icon.error{background:#fee2e2;color:#ef4444}
         .log-icon.processing{background:#dbeafe;color:#3b82f6}
+
         .custom-modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;animation:fadeIn .3s}
         .custom-modal-overlay.show{display:flex}
         .custom-modal{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-width:600px;width:90%;max-height:80vh;animation:slideUp .3s;overflow:hidden;display:flex;flex-direction:column}
@@ -179,42 +226,36 @@
                 <p>Upload multiple documents at once using folder selection and Excel metadata</p>
             </div>
 
-            <!-- 5 steps now -->
+            <!-- 6 steps -->
             <div class="wizard-steps">
                 <div class="wizard-step active" data-step="1">
-                    <div class="wizard-step-circle">
-                        <i class="bi bi-folder2-open"></i>
-                    </div>
+                    <div class="wizard-step-circle"><i class="bi bi-folder2-open"></i></div>
                     <div class="wizard-step-label">Bulk Upload</div>
                 </div>
                 <div class="wizard-step" data-step="2">
-                    <div class="wizard-step-circle">
-                        <i class="bi bi-file-earmark-arrow-down"></i>
-                    </div>
+                    <div class="wizard-step-circle"><i class="bi bi-file-earmark-arrow-down"></i></div>
                     <div class="wizard-step-label">Download Template</div>
                 </div>
                 <div class="wizard-step" data-step="3">
-                    <div class="wizard-step-circle">
-                        <i class="bi bi-file-earmark-excel"></i>
-                    </div>
+                    <div class="wizard-step-circle"><i class="bi bi-file-earmark-excel"></i></div>
                     <div class="wizard-step-label">Upload Metadata</div>
                 </div>
                 <div class="wizard-step" data-step="4">
-                    <div class="wizard-step-circle">
-                        <i class="bi bi-check-square"></i>
-                    </div>
-                    <div class="wizard-step-label">Validation</div>
+                    <div class="wizard-step-circle"><i class="bi bi-pencil-square"></i></div>
+                    <div class="wizard-step-label">Self Validation</div>
                 </div>
                 <div class="wizard-step" data-step="5">
-                    <div class="wizard-step-circle">
-                        <i class="bi bi-cloud-upload"></i>
-                    </div>
+                    <div class="wizard-step-circle"><i class="bi bi-check-square"></i></div>
+                    <div class="wizard-step-label">Validation</div>
+                </div>
+                <div class="wizard-step" data-step="6">
+                    <div class="wizard-step-circle"><i class="bi bi-cloud-upload"></i></div>
                     <div class="wizard-step-label">Upload</div>
                 </div>
             </div>
 
             <div class="wizard-content">
-                <!-- Step 1: folder -->
+                <!-- Step 1 -->
                 <div class="wizard-step-content active" data-step="1">
                     <div class="drop-zone" id="dropZone">
                         <svg class="drop-zone-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -233,9 +274,7 @@
                     </div>
 
                     <div class="folder-uploaded-message" id="folderUploadedMessage">
-                        <div class="folder-uploaded-icon">
-                            <i class="bi bi-check-circle-fill"></i>
-                        </div>
+                        <div class="folder-uploaded-icon"><i class="bi bi-check-circle-fill"></i></div>
                         <div class="folder-uploaded-title">Folder Selected Successfully!</div>
                         <div class="folder-uploaded-details">
                             <strong id="uploadedFileCount">0 PDF files</strong> •
@@ -244,17 +283,15 @@
                         <button type="button" class="change-file-btn" onclick="changeFolder()">
                             <i class="bi bi-arrow-repeat"></i> Change Folder
                         </button>
-
                         <div class="file-list" id="fileList"></div>
                     </div>
                 </div>
 
-                <!-- Step 2: download template -->
+                <!-- Step 2 -->
                 <div class="wizard-step-content" data-step="2">
                     <div class="info-box">
                         <div class="info-box-title">
-                            <i class="bi bi-info-circle-fill"></i>
-                            Download Metadata Template
+                            <i class="bi bi-info-circle-fill"></i>Download Metadata Template
                         </div>
                         <div class="info-box-content">
                             Use this step to download the Excel template for metadata entry if needed.
@@ -273,12 +310,11 @@
                     </div>
                 </div>
 
-                <!-- Step 3: upload Excel -->
+                <!-- Step 3 -->
                 <div class="wizard-step-content" data-step="3">
                     <div class="info-box">
                         <div class="info-box-title">
-                            <i class="bi bi-info-circle-fill"></i>
-                            Upload Metadata Excel
+                            <i class="bi bi-info-circle-fill"></i>Upload Metadata Excel
                         </div>
                         <div class="info-box-content">
                             Upload the Excel file that contains metadata for the selected documents.
@@ -307,9 +343,7 @@
                     </div>
 
                     <div class="folder-uploaded-message" id="excelUploadedMessage">
-                        <div class="folder-uploaded-icon">
-                            <i class="bi bi-check-circle-fill"></i>
-                        </div>
+                        <div class="folder-uploaded-icon"><i class="bi bi-check-circle-fill"></i></div>
                         <div class="folder-uploaded-title">Excel File Uploaded Successfully!</div>
                         <div class="folder-uploaded-details">
                             <strong id="uploadedExcelName">file.xlsx</strong> •
@@ -321,8 +355,56 @@
                     </div>
                 </div>
 
-                <!-- Step 4: validation -->
+                <!-- Step 4: self validation -->
                 <div class="wizard-step-content" data-step="4">
+                    <div style="display:flex;flex-direction:column;height:100%;">
+                        <!-- top 20% -->
+                        <div style="flex:0 0 20%;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                            <div>
+                                <div class="self-validation-title">Self Validation & Metadata Editing</div>
+                                <div class="self-validation-info">
+                                    Review metadata from Excel and folder. Click <strong>Edit</strong> to update, then <strong>Done</strong> to lock and continue.
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:10px;">
+                                <button type="button" class="wizard-btn wizard-btn-secondary" id="editMetadataBtn">
+                                    <i class="bi bi-pencil-square"></i> Edit
+                                </button>
+                                <button type="button" class="wizard-btn wizard-btn-success" id="doneMetadataBtn" disabled>
+                                    <i class="bi bi-check2-circle"></i> Done
+                                </button>
+                            </div>
+                        </div>
+                        <!-- bottom 80% -->
+                        <div style="flex:1 1 80%;min-height:0;">
+                            <div class="self-validation-table-wrapper" style="height:100%;">
+                                <table class="self-validation-table" id="selfValidationTable">
+                                    <thead>
+                                    <tr>
+                                        <th style="min-width:180px;">Document Name</th>
+                                        <th style="min-width:150px;">Title</th>
+                                        <th style="min-width:120px;">Product Code</th>
+                                        <th style="min-width:100px;">Edition</th>
+                                        <th style="min-width:120px;">Publish Month</th>
+                                        <th style="min-width:100px;">Publish Year</th>
+                                        <th style="min-width:100px;">No of Pages</th>
+                                        <th style="min-width:160px;">Notes</th>
+                                        <th style="min-width:180px;">Tags (multi)</th>
+                                        <th style="min-width:200px;">Classifications (multi)</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                            <div class="self-validation-info">
+                                Tags and Classifications support multiple values using dropdown with checkboxes.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5: validation -->
+                <div class="wizard-step-content" data-step="5">
                     <div class="validation-results">
                         <div class="validation-header">
                             <div class="validation-title">Validation Results</div>
@@ -348,10 +430,7 @@
                         </div>
                         <div class="validation-issues" id="validationIssues"></div>
                         <div class="validation-error-actions" id="validationErrorActions">
-                            <h4>
-                                <i class="bi bi-exclamation-triangle-fill"></i>
-                                Validation Errors Found
-                            </h4>
+                            <h4><i class="bi bi-exclamation-triangle-fill"></i>Validation Errors Found</h4>
                             <p>You have the following options:</p>
                             <div class="error-action-buttons">
                                 <button type="button" class="error-action-btn upload-valid" id="uploadValidBtn">
@@ -368,8 +447,8 @@
                     </div>
                 </div>
 
-                <!-- Step 5: upload progress -->
-                <div class="wizard-step-content" data-step="5">
+                <!-- Step 6: upload -->
+                <div class="wizard-step-content" data-step="6">
                     <div class="progress-container">
                         <div class="progress-header">
                             <div class="progress-title">Uploading Documents...</div>
@@ -469,7 +548,7 @@
             </div>
         </div>
 
-        <!-- PDF protection modal with remove-option -->
+        <!-- PDF protection modal -->
         <div class="custom-modal-overlay" id="pdfProtectionModal">
             <div class="custom-modal">
                 <div class="modal-header-custom modal-header-warning">
@@ -513,6 +592,8 @@
 
 <script src="/js/bootstrap.bundle.min.js"></script>
 <div th:replace="~{common/navbar :: navbar-js}"></div>
+<!-- paste the JS block I gave in the previous message here -->
+
 
 <script>
     let currentStep = 1;
@@ -529,6 +610,13 @@
     let selectedPdfIndices = new Set();
     let lastVisitedUrl = document.referrer || '';
 
+    // Step 4 metadata confirmation - THIS IS THE SOURCE OF TRUTH AFTER EDITING
+    let selfValidationData = [];
+    let isEditingMetadata = false;
+
+    const ALL_TAGS = ['Safety','Quality','Design','Manufacturing','Regulatory','Compliance','Testing','Maintenance'];
+    const ALL_CLASSIFICATIONS = ['Standard','Specification','Procedure','Manual','Drawing','Code','Guideline','Report'];
+
     document.addEventListener('DOMContentLoaded', function () {
         if (typeof pdfjsLib !== 'undefined') {
             pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.js';
@@ -538,6 +626,8 @@
             showCustomAlert('Your browser may not fully support folder selection. Please try Chrome, Edge, or another modern browser.', 'warning');
         }
     });
+
+    /* ===================== WIZARD NAV ===================== */
 
     function updateWizardStep(step) {
         document.querySelectorAll('.wizard-step-content').forEach(c => c.classList.remove('active'));
@@ -571,22 +661,28 @@
             prevBtn.style.display = 'inline-flex';
             nextBtn.style.display = 'inline-flex';
             nextBtn.className = 'wizard-btn wizard-btn-primary';
-            nextBtn.innerHTML = 'Validate <i class="bi bi-check-square"></i>';
+            nextBtn.innerHTML = 'Go to Confirmation <i class="bi bi-arrow-right"></i>';
             nav.style.display = 'flex';
         } else if (step === 4) {
             prevBtn.style.display = 'inline-flex';
             nextBtn.style.display = 'inline-flex';
-            nextBtn.className = 'wizard-btn wizard-btn-success';
-            nextBtn.innerHTML = '<i class="bi bi-arrow-right"></i> Go to Upload';
+            nextBtn.className = 'wizard-btn wizard-btn-primary';
+            nextBtn.innerHTML = 'Validate <i class="bi bi-check-square"></i>';
             nav.style.display = 'flex';
+            parseExcelAndBuildTable();
         } else if (step === 5) {
-            // during upload hide nav
+            prevBtn.style.display = 'inline-flex';
+            nextBtn.style.display = 'inline-flex';
+            nextBtn.className = 'wizard-btn wizard-btn-primary';
+            nextBtn.innerHTML = 'Validate <i class="bi bi-check-square"></i>';
+            nav.style.display = 'flex';
+        } else if (step === 6) {
             nav.style.display = 'none';
         }
         currentStep = step;
     }
 
-    function updateStep4Navigation(hasErrors) {
+    function updateStep5Navigation(hasErrors) {
         const prevBtn = document.getElementById('prevBtn');
         const nextBtn = document.getElementById('nextBtn');
         prevBtn.style.display = 'inline-flex';
@@ -611,61 +707,419 @@
                 return;
             }
             const o = formChanged; formChanged = false;
-            updateWizardStep(2);
-            formChanged = o;
+            updateWizardStep(2); formChanged = o;
         } else if (currentStep === 2) {
             const o = formChanged; formChanged = false;
-            updateWizardStep(3);
-            formChanged = o;
+            updateWizardStep(3); formChanged = o;
         } else if (currentStep === 3) {
             if (!excelFile) {
-                showCustomAlert('Please upload the metadata Excel file before validating.');
+                showCustomAlert('Please upload the metadata Excel file before proceeding.');
                 return;
             }
             const o = formChanged; formChanged = false;
-            await validateFiles();
-            formChanged = o;
+            updateWizardStep(4); formChanged = o;
         } else if (currentStep === 4) {
+            if (isEditingMetadata) {
+                showCustomAlert('Please click Done to finish editing before going to next step.', 'warning');
+                return;
+            }
+            // Capture the latest data from the table before validation
+            captureSelfValidationDataFromTable();
+            console.log('=== SENDING TO VALIDATION ===');
+            console.log('selfValidationData:', selfValidationData);
+            const o = formChanged; formChanged = false;
+            await validateFiles(); formChanged = o;
+        } else if (currentStep === 5) {
             if (validationResult && validationResult.errors && validationResult.errors.length > 0) {
                 showUploadValidConfirmation();
             } else {
                 const o = formChanged; formChanged = false;
-                await startUpload(false);
-                formChanged = o;
+                await startUpload(false); formChanged = o;
             }
         }
     });
 
     document.getElementById('prevBtn').addEventListener('click', function () {
-        if (currentStep > 1 && currentStep <= 4) {
+        if (currentStep > 1 && currentStep <= 6) {
             const o = formChanged; formChanged = false;
-            updateWizardStep(currentStep - 1);
-            formChanged = o;
+            updateWizardStep(currentStep - 1); formChanged = o;
         }
     });
 
-    document.getElementById('uploadValidBtn').addEventListener('click', showUploadValidConfirmation);
-    function showUploadValidConfirmation() {
-        if (!validationResult) return;
-        const v = validationResult.validDocuments || 0;
-        const e = validationResult.errors ? validationResult.errors.length : 0;
-        document.getElementById('validDocsCount').textContent = v;
-        document.getElementById('errorDocsCount').textContent = e;
-        document.getElementById('uploadValidConfirmModal').classList.add('show');
+    /* ===================== STEP 4: EXCEL PARSING & EDITING ===================== */
+
+    function extractFilename(pathOrFilename) {
+        if (!pathOrFilename) return '';
+        const parts = pathOrFilename.split(/[/\\]/);
+        return parts[parts.length - 1];
     }
-    function closeUploadValidConfirmModal() {
-        document.getElementById('uploadValidConfirmModal').classList.remove('show');
+
+    function normalizeFilename(filename) {
+        if (!filename) return '';
+        const justFilename = extractFilename(filename);
+        return justFilename
+            .toLowerCase()
+            .replace(/\.pdf$/i, '')
+            .replace(/[_\s-]+/g, '')
+            .trim();
     }
-    document.getElementById('confirmUploadValidBtn').addEventListener('click', async function () {
-        closeUploadValidConfirmModal();
-        const o = formChanged; formChanged = false;
-        await startUpload(true);
-        formChanged = o;
+
+    function getColumnValue(row, possibleNames) {
+        for (let name of possibleNames) {
+            if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
+                return row[name].toString().trim();
+            }
+            const keys = Object.keys(row);
+            const matchedKey = keys.find(k => k.toLowerCase() === name.toLowerCase());
+            if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== null && row[matchedKey] !== '') {
+                return row[matchedKey].toString().trim();
+            }
+        }
+        return '';
+    }
+
+    async function parseExcelAndBuildTable() {
+        if (!excelFile) {
+            showCustomAlert('No Excel file uploaded.', 'error');
+            return;
+        }
+
+        const loadingAlert = showCustomAlert('Reading Excel file...', 'info', false);
+
+        try {
+            const arrayBuffer = await excelFile.arrayBuffer();
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+            if (loadingAlert) loadingAlert.remove();
+
+            console.log('Excel parsed successfully. Rows:', jsonData.length);
+
+            if (!jsonData || jsonData.length === 0) {
+                showCustomAlert('Excel file is empty or has no data.', 'warning');
+                buildEmptySelfValidationTable();
+                return;
+            }
+
+            const indices = Array.from(selectedPdfIndices);
+            selfValidationData = [];
+
+            let matchCount = 0;
+
+            indices.forEach(idx => {
+                const file = pdfFiles[idx];
+                const fileName = file ? file.name : '';
+
+                let excelRow = jsonData.find(row => {
+                    const rowFileName = getColumnValue(row, ['Filename', 'Document Name', 'FileName', 'File Name', 'document_name', 'filename', 'file_name', 'DocumentName']);
+                    const extractedFileName = extractFilename(rowFileName);
+                    return extractedFileName.toLowerCase() === fileName.toLowerCase();
+                });
+
+                if (!excelRow) {
+                    excelRow = jsonData.find(row => {
+                        const rowFileName = getColumnValue(row, ['Filename', 'Document Name', 'FileName', 'File Name', 'document_name', 'filename', 'file_name', 'DocumentName']);
+                        const extractedFileName = extractFilename(rowFileName);
+                        const normalizedExcelName = normalizeFilename(extractedFileName);
+                        const normalizedPdfName = normalizeFilename(fileName);
+                        return normalizedExcelName === normalizedPdfName;
+                    });
+                }
+
+                if (excelRow) {
+                    matchCount++;
+                }
+
+                let tags = [];
+                let classifications = [];
+
+                if (excelRow) {
+                    const tagsValue = getColumnValue(excelRow, ['Tags', 'tags', 'TAG', 'tag', 'Tags (comma-separated)']);
+                    if (tagsValue) {
+                        if (typeof tagsValue === 'string') {
+                            tags = tagsValue.split(',').map(t => t.trim()).filter(t => t);
+                        } else if (Array.isArray(tagsValue)) {
+                            tags = tagsValue.map(t => t.toString().trim()).filter(t => t);
+                        }
+                    }
+
+                    const classValue = getColumnValue(excelRow, ['Classifications', 'Classification', 'classifications', 'classification', 'CLASSIFICATION', 'Classifications (comma-separated)']);
+                    if (classValue) {
+                        if (typeof classValue === 'string') {
+                            classifications = classValue.split(',').map(c => c.trim()).filter(c => c);
+                        } else if (Array.isArray(classValue)) {
+                            classifications = classValue.map(c => c.toString().trim()).filter(c => c);
+                        }
+                    }
+                }
+
+                const metadata = {
+                    fileIndex: idx,
+                    fileName: fileName,
+                    title: excelRow ? getColumnValue(excelRow, ['Title', 'title', 'TITLE']) : '',
+                    productCode: excelRow ? getColumnValue(excelRow, ['Product Code', 'ProductCode', 'product_code', 'PRODUCT_CODE', 'Code', 'code']) : '',
+                    edition: excelRow ? getColumnValue(excelRow, ['Edition', 'edition', 'EDITION', 'Version', 'version']) : '',
+                    publishMonth: excelRow ? getColumnValue(excelRow, ['Publish Month', 'PublishMonth', 'publish_month', 'PUBLISH_MONTH', 'Month', 'month']) : '',
+                    publishYear: excelRow ? getColumnValue(excelRow, ['Publish Year', 'PublishYear', 'publish_year', 'PUBLISH_YEAR', 'Year', 'year']) : '',
+                    noOfPages: excelRow ? getColumnValue(excelRow, ['No of Pages', 'NoOfPages', 'no_of_pages', 'Pages', 'pages', 'PAGE_COUNT', 'PageCount']) : '',
+                    notes: excelRow ? getColumnValue(excelRow, ['Notes', 'notes', 'NOTES', 'Note', 'note', 'Description', 'description']) : '',
+                    tags: tags,
+                    classifications: classifications
+                };
+
+                selfValidationData.push(metadata);
+            });
+
+            buildSelfValidationTable();
+
+            if (matchCount === 0) {
+                showCustomAlert('Warning: No filenames matched! Check the console (F12) for details.', 'warning');
+            } else if (matchCount < indices.length) {
+                showCustomAlert(`Partial match: ${matchCount} of ${indices.length} documents matched.`, 'warning');
+            } else {
+                showCustomAlert(`Success! All ${matchCount} documents matched with Excel data.`, 'success');
+            }
+
+        } catch (error) {
+            if (loadingAlert) loadingAlert.remove();
+            console.error('Error parsing Excel:', error);
+            showCustomAlert('Failed to parse Excel file: ' + error.message, 'error');
+            buildEmptySelfValidationTable();
+        }
+    }
+
+    function buildEmptySelfValidationTable() {
+        const indices = Array.from(selectedPdfIndices);
+        selfValidationData = indices.map(idx => ({
+            fileIndex: idx,
+            fileName: pdfFiles[idx] ? pdfFiles[idx].name : '',
+            title: '',
+            productCode: '',
+            edition: '',
+            publishMonth: '',
+            publishYear: '',
+            noOfPages: '',
+            notes: '',
+            tags: [],
+            classifications: []
+        }));
+        buildSelfValidationTable();
+    }
+
+    document.getElementById('editMetadataBtn').addEventListener('click', function () {
+        isEditingMetadata = true;
+        updateSelfValidationEditState();
     });
 
-    function triggerFolderSelection() {
-        document.getElementById('folderInput').click();
+    document.getElementById('doneMetadataBtn').addEventListener('click', function () {
+        // Capture data from table when Done is clicked
+        captureSelfValidationDataFromTable();
+        isEditingMetadata = false;
+        updateSelfValidationEditState();
+        formChanged = true;
+        console.log('=== DATA CAPTURED AFTER EDITING ===');
+        console.log('selfValidationData:', selfValidationData);
+        showCustomAlert('Metadata confirmed. You can proceed to validation.', 'success');
+    });
+
+    function updateSelfValidationEditState() {
+        const editBtn = document.getElementById('editMetadataBtn');
+        const doneBtn = document.getElementById('doneMetadataBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const inputs = document.querySelectorAll('#selfValidationTable tbody input');
+
+        if (isEditingMetadata) {
+            editBtn.disabled = true;
+            doneBtn.disabled = false;
+            nextBtn.disabled = true;
+            inputs.forEach(i => { if (i.dataset.locked === 'true') return; i.readOnly = false; });
+        } else {
+            editBtn.disabled = false;
+            doneBtn.disabled = false;
+            nextBtn.disabled = false;
+            inputs.forEach(i => i.readOnly = true);
+        }
     }
+
+    function buildSelfValidationTable() {
+        const tbody = document.querySelector('#selfValidationTable tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (selectedPdfIndices.size === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#6b7280;padding:16px;">No documents selected.</td></tr>';
+            return;
+        }
+
+        if (selfValidationData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#6b7280;padding:16px;">No metadata loaded. Please check Excel file.</td></tr>';
+            return;
+        }
+
+        selfValidationData.forEach((meta, index) => {
+            const tagsArr = meta.tags || [];
+            const classArr = meta.classifications || [];
+            const tagsText = tagsArr.length ? tagsArr.join(', ') : '';
+            const classText = classArr.length ? classArr.join(', ') : '';
+
+            const row = document.createElement('tr');
+            row.dataset.fileIndex = meta.fileIndex;
+            row.innerHTML = `
+                <td><input type="text" value="${escapeHtml(meta.fileName || '')}" readonly data-locked="true"></td>
+                <td><input type="text" value="${escapeHtml(meta.title || '')}"></td>
+                <td><input type="text" value="${escapeHtml(meta.productCode || '')}"></td>
+                <td><input type="text" value="${escapeHtml(meta.edition || '')}"></td>
+                <td><input type="text" value="${escapeHtml(meta.publishMonth || '')}"></td>
+                <td><input type="number" min="1900" value="${escapeHtml(meta.publishYear || '')}"></td>
+                <td><input type="number" min="1" value="${escapeHtml(meta.noOfPages || '')}"></td>
+                <td><input type="text" value="${escapeHtml(meta.notes || '')}"></td>
+                <td>
+                    <div class="multi-select-container" data-type="tags" data-selected='${JSON.stringify(tagsArr)}'>
+                        <div class="multi-select-display">
+                            <span>${escapeHtml(tagsText || 'Select tags...')}</span>
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="multi-select-container" data-type="classifications" data-selected='${JSON.stringify(classArr)}'>
+                        <div class="multi-select-display">
+                            <span>${escapeHtml(classText || 'Select classifications...')}</span>
+                            <i class="bi bi-chevron-down"></i>
+                        </div>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        document.querySelectorAll('#selfValidationTable tbody input').forEach(i => i.readOnly = true);
+        wireMultiSelectEvents();
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function wireMultiSelectEvents() {
+        document.querySelectorAll('#selfValidationTable .multi-select-display').forEach(display => {
+            display.onclick = function (e) {
+                if (!isEditingMetadata) return;
+                e.stopPropagation();
+                const container = this.closest('.multi-select-container');
+                toggleMultiSelectPanel(container);
+            };
+        });
+    }
+
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.multi-select-panel').forEach(p => p.remove());
+    });
+
+    function toggleMultiSelectPanel(container) {
+        const existing = container.querySelector('.multi-select-panel');
+        if (existing) { existing.remove(); return; }
+
+        const type = container.dataset.type;
+        const allItems = type === 'tags' ? ALL_TAGS : ALL_CLASSIFICATIONS;
+        const selected = JSON.parse(container.dataset.selected || '[]');
+
+        const panel = document.createElement('div');
+        panel.className = 'multi-select-panel';
+
+        const searchDiv = document.createElement('div');
+        searchDiv.className = 'multi-select-search';
+        searchDiv.innerHTML = '<input type="text" placeholder="Search...">';
+        panel.appendChild(searchDiv);
+
+        const listDiv = document.createElement('div');
+        allItems.forEach(item => {
+            const opt = document.createElement('div');
+            opt.className = 'multi-select-option';
+            opt.innerHTML = `<input type="checkbox" ${selected.includes(item)?'checked':''}><span>${item}</span>`;
+            opt.onclick = function (e) {
+                e.stopPropagation();
+                const cb = this.querySelector('input[type="checkbox"]');
+                cb.checked = !cb.checked;
+                const label = this.querySelector('span').textContent;
+                const arr = JSON.parse(container.dataset.selected || '[]');
+                if (cb.checked && !arr.includes(label)) arr.push(label);
+                if (!cb.checked) {
+                    const i = arr.indexOf(label); if (i>=0) arr.splice(i,1);
+                }
+                container.dataset.selected = JSON.stringify(arr);
+                const dispSpan = container.querySelector('.multi-select-display span');
+                dispSpan.textContent = arr.length ? arr.join(', ') : (type==='tags'?'Select tags...':'Select classifications...');
+            };
+            listDiv.appendChild(opt);
+        });
+        panel.appendChild(listDiv);
+
+        const footer = document.createElement('div');
+        footer.className = 'multi-select-footer';
+        footer.textContent = 'Click to select or unselect. Multiple values allowed.';
+        panel.appendChild(footer);
+
+        const searchInput = searchDiv.querySelector('input');
+        searchInput.oninput = function () {
+            const term = this.value.toLowerCase();
+            listDiv.querySelectorAll('.multi-select-option').forEach(o => {
+                const txt = o.querySelector('span').textContent.toLowerCase();
+                o.style.display = txt.includes(term) ? 'flex' : 'none';
+            });
+        };
+
+        container.appendChild(panel);
+    }
+
+    // CRITICAL: This captures the edited data from the table
+    function captureSelfValidationDataFromTable() {
+        const rows = document.querySelectorAll('#selfValidationTable tbody tr');
+        const result = [];
+        rows.forEach(row => {
+            const idx = parseInt(row.dataset.fileIndex);
+            const cells = row.querySelectorAll('td');
+            if (cells.length < 10) return;
+
+            // Get all input values
+            const getVal = i => cells[i].querySelector('input')?.value || '';
+            const title = getVal(1);
+            const productCode = getVal(2);
+            const edition = getVal(3);
+            const publishMonth = getVal(4);
+            const publishYear = getVal(5);
+            const noOfPages = getVal(6);
+            const notes = getVal(7);
+
+            // Get multi-select values
+            const tagsContainer = cells[8].querySelector('.multi-select-container');
+            const classContainer = cells[9].querySelector('.multi-select-container');
+            const tags = JSON.parse(tagsContainer?.dataset.selected || '[]');
+            const classifications = JSON.parse(classContainer?.dataset.selected || '[]');
+
+            result.push({
+                fileIndex: idx,
+                fileName: pdfFiles[idx]?.name || '',
+                title,
+                productCode,
+                edition,
+                publishMonth,
+                publishYear,
+                noOfPages,
+                notes,
+                tags,
+                classifications
+            });
+        });
+        selfValidationData = result;
+        console.log('Captured edited data:', selfValidationData);
+    }
+
+    /* ===================== STEP 1: FOLDER & PROTECTION ===================== */
 
     const folderInput = document.getElementById('folderInput');
     const folderUploadedMessage = document.getElementById('folderUploadedMessage');
@@ -760,9 +1214,11 @@
         document.getElementById('pdfProtectionModal').classList.add('show');
         window.tempAllFiles = allFiles;
     }
+
     function closePdfProtectionModal() {
         document.getElementById('pdfProtectionModal').classList.remove('show');
     }
+
     function cancelProtectedPdfs() {
         folderInput.value = '';
         pdfFiles = [];
@@ -772,13 +1228,16 @@
         dropZone.style.display = 'block';
         closePdfProtectionModal();
         formChanged = false;
+        selfValidationData = [];
     }
+
     document.getElementById('removeProtectedAndContinueBtn').addEventListener('click', async function(){
         closePdfProtectionModal();
         const allFiles = window.tempAllFiles || [];
         const filtered = allFiles.filter(f => !protectedPdfFiles.includes(f));
         await proceedWithFolderSelection(filtered);
     });
+
     document.getElementById('forceUploadProtectedBtn').addEventListener('click', async function(){
         closePdfProtectionModal();
         await proceedWithFolderSelection(window.tempAllFiles || []);
@@ -795,6 +1254,7 @@
         dropZone.style.display = 'none';
         displayFileList();
         formChanged = true;
+        selfValidationData = [];
         showCustomAlert(`Successfully loaded ${pdfFiles.length} PDF file(s)`, 'success');
     }
 
@@ -812,17 +1272,14 @@
                 <input type="checkbox" id="selectAllFiles" class="form-check-input">
                 <span>Select All (${pdfFiles.length})</span>
             </div>
-            <span>Only checked documents will be validated and uploaded.</span>
+            <span>Only checked documents will be processed.</span>
         `;
         fileList.appendChild(header);
         const selectAllCheckbox = header.querySelector('#selectAllFiles');
         selectAllCheckbox.checked = selectedPdfIndices.size === pdfFiles.length;
         selectAllCheckbox.addEventListener('change', function () {
-            if (this.checked) {
-                selectedPdfIndices = new Set(pdfFiles.map((_,i)=>i));
-            } else {
-                selectedPdfIndices.clear();
-            }
+            if (this.checked) selectedPdfIndices = new Set(pdfFiles.map((_,i)=>i));
+            else selectedPdfIndices.clear();
             refreshFileCheckboxes();
         });
 
@@ -852,12 +1309,14 @@
             selectAllCheckbox.checked = selectedPdfIndices.size === pdfFiles.length;
         });
     }
+
     function refreshFileCheckboxes() {
         document.querySelectorAll('.file-checkbox').forEach(cb => {
             const idx = parseInt(cb.getAttribute('data-index'));
             cb.checked = selectedPdfIndices.has(idx);
         });
     }
+
     function changeFolder() {
         folderInput.value = '';
         pdfFiles = [];
@@ -866,7 +1325,14 @@
         folderUploadedMessage.classList.remove('show');
         dropZone.style.display = 'block';
         formChanged = false;
+        selfValidationData = [];
     }
+
+    function triggerFolderSelection() {
+        document.getElementById('folderInput').click();
+    }
+
+    /* ===================== STEP 2: TEMPLATE DOWNLOAD ===================== */
 
     document.getElementById('downloadTemplateBtn').addEventListener('click', async function(){
         if (!pdfFiles || pdfFiles.length === 0) {
@@ -889,8 +1355,6 @@
                     showCustomAlert('Access Denied: Admin access required.', 'error');
                     isDownloadingTemplate = false; return;
                 }
-                const t = await response.text();
-                console.error('Download failed:', t);
                 throw new Error(`Download failed: ${response.status}`);
             }
             const blob = await response.blob();
@@ -902,18 +1366,15 @@
                 if (m && m[1]) filename = m[1].replace(/['"]/g,'');
             }
             downloadBlob(blob, filename);
-            showCustomAlert('Template downloaded successfully! Use the Classification dropdown in Excel.', 'success');
+            showCustomAlert('Template downloaded successfully!', 'success');
         }catch(err){
             console.error('Template download error:', err);
-            if (err.message.includes('Failed to fetch')) {
-                showCustomAlert('Cannot connect to server. Please check if backend is running.', 'error');
-            } else {
-                showCustomAlert(`Failed to download template: ${err.message}`, 'error');
-            }
+            showCustomAlert(`Failed to download template: ${err.message}`, 'error');
         }finally{
             isDownloadingTemplate = false;
         }
     });
+
     function downloadBlob(blob, filename){
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -922,9 +1383,12 @@
         setTimeout(()=>{window.URL.revokeObjectURL(url);document.body.removeChild(a);},100);
     }
 
+    /* ===================== STEP 3: EXCEL UPLOAD ===================== */
+
     const excelDropZone = document.getElementById('excelDropZone');
     const excelFileInput = document.getElementById('excelFileInput');
     const excelUploadedMessage = document.getElementById('excelUploadedMessage');
+
     ['dragenter','dragover','dragleave','drop'].forEach(ev=>{
         excelDropZone.addEventListener(ev,e=>{e.preventDefault();e.stopPropagation();});
     });
@@ -941,6 +1405,7 @@
     excelFileInput.addEventListener('change',e=>{
         if (e.target.files.length>0) handleExcelFile(e.target.files[0]);
     });
+
     function handleExcelFile(file){
         if (!file) return;
         const exts=['.xlsx','.xls'];
@@ -956,26 +1421,39 @@
         excelDropZone.style.display='none';
         formChanged = true;
     }
+
     function changeExcelFile(){
         excelFileInput.value='';
         excelFile=null;
         excelUploadedMessage.classList.remove('show');
         excelDropZone.style.display='block';
         formChanged = true;
+        selfValidationData = [];
     }
+
+    /* ===================== STEP 5: VALIDATION - USES EDITED DATA ===================== */
 
     async function validateFiles(){
         if (selectedPdfIndices.size === 0){
             showCustomAlert('No documents selected. Please select at least one document in Step 1.', 'error');
             return;
         }
-        updateWizardStep(4);
+
+        updateWizardStep(5);
         document.getElementById('validationStatus').textContent='Validating...';
         document.getElementById('validationStatus').className='validation-status';
         document.getElementById('validationErrorActions').classList.remove('show');
+
         const formData = new FormData();
         Array.from(selectedPdfIndices).forEach(idx=>formData.append('pdfFiles', pdfFiles[idx]));
         formData.append('excelFile', excelFile);
+
+        // CRITICAL: Send the edited selfValidationData to backend
+        if (selfValidationData && selfValidationData.length > 0) {
+            formData.append('selfValidationJson', JSON.stringify(selfValidationData));
+            console.log('Sending edited metadata to validation:', selfValidationData);
+        }
+
         try{
             const response = await fetch('/api/bulk-upload/validate',{method:'POST',body:formData});
             if (!response.ok){
@@ -998,6 +1476,7 @@
         document.getElementById('validDocuments').textContent = result.validDocuments || 0;
         document.getElementById('warningCount').textContent = result.warnings?.length || 0;
         document.getElementById('errorCount').textContent = result.errors?.length || 0;
+
         const issues = document.getElementById('validationIssues');
         issues.innerHTML='';
         const hasErrors = result.errors && result.errors.length>0;
@@ -1027,13 +1506,14 @@
             document.getElementById('validationStatus').textContent='All Valid';
             document.getElementById('validationStatus').classList.add('success');
         }
-        updateStep4Navigation(hasErrors);
+        updateStep5Navigation(hasErrors);
         if (hasErrors){
             showCustomAlert(`Validation complete. ${result.validDocuments} documents are ready to upload.`, 'warning');
         }else{
             showCustomAlert('Validation successful! Click "Upload" to proceed.', 'success');
         }
     }
+
     function createIssueItem(issue,type){
         const item=document.createElement('div');
         item.className='issue-item';
@@ -1049,12 +1529,15 @@
         return item;
     }
 
+    /* ===================== STEP 6: UPLOAD - USES EDITED DATA ===================== */
+
     async function startUpload(onlyValid=false){
         if (selectedPdfIndices.size === 0){
             showCustomAlert('No documents selected. Please select at least one document in Step 1.', 'error');
             return;
         }
-        updateWizardStep(5);
+
+        updateWizardStep(6);
         isSubmitting = true;
         uploadStartTime = Date.now();
 
@@ -1062,6 +1545,12 @@
         Array.from(selectedPdfIndices).forEach(idx=>formData.append('pdfFiles', pdfFiles[idx]));
         formData.append('excelFile', excelFile);
         if (onlyValid) formData.append('uploadOnlyValid','true');
+
+        // CRITICAL: Send the edited selfValidationData to backend for upload
+        if (selfValidationData && selfValidationData.length > 0) {
+            formData.append('selfValidationJson', JSON.stringify(selfValidationData));
+            console.log('Sending edited metadata to upload:', selfValidationData);
+        }
 
         try{
             const response = await fetch('/api/bulk-upload/process',{method:'POST',body:formData});
@@ -1126,6 +1615,27 @@
         setTimeout(()=>{window.location.href='/documents';},2000);
     }
 
+    /* ===================== VALIDATION ERROR ACTIONS ===================== */
+
+    document.getElementById('uploadValidBtn').addEventListener('click', showUploadValidConfirmation);
+    function showUploadValidConfirmation() {
+        if (!validationResult) return;
+        const v = validationResult.validDocuments || 0;
+        const e = validationResult.errors ? validationResult.errors.length : 0;
+        document.getElementById('validDocsCount').textContent = v;
+        document.getElementById('errorDocsCount').textContent = e;
+        document.getElementById('uploadValidConfirmModal').classList.add('show');
+    }
+    function closeUploadValidConfirmModal() {
+        document.getElementById('uploadValidConfirmModal').classList.remove('show');
+    }
+    document.getElementById('confirmUploadValidBtn').addEventListener('click', async function () {
+        closeUploadValidConfirmModal();
+        const o = formChanged; formChanged = false;
+        await startUpload(true);
+        formChanged = o;
+    });
+
     document.getElementById('reuploadFolderBtn').addEventListener('click',function(){
         changeFolder();
         changeExcelFile();
@@ -1142,6 +1652,8 @@
         showCustomAlert('Please upload the corrected metadata Excel file.', 'info');
     });
 
+    /* ===================== CANCEL / NAVIGATION GUARD ===================== */
+
     document.getElementById('cancelBtn').addEventListener('click', function(){
         if (formChanged && !isSubmitting){
             document.getElementById('confirmationModal').classList.add('show');
@@ -1149,9 +1661,11 @@
             navigateAway();
         }
     });
+
     function closeConfirmationModal(){
         document.getElementById('confirmationModal').classList.remove('show');
     }
+
     document.getElementById('confirmCancelBtn').addEventListener('click',function(){
         closeConfirmationModal();
         navigateAway();
@@ -1187,7 +1701,7 @@
         const button = e.target.closest('button');
         if (isDownloadingTemplate) return;
         if (button){
-            const wizardBtns=['nextBtn','prevBtn','cancelBtn','downloadTemplateBtn','reuploadFolderBtn','reuploadExcelBtn','uploadValidBtn','confirmUploadValidBtn'];
+            const wizardBtns=['nextBtn','prevBtn','cancelBtn','downloadTemplateBtn','reuploadFolderBtn','reuploadExcelBtn','uploadValidBtn','confirmUploadValidBtn','editMetadataBtn','doneMetadataBtn'];
             if (wizardBtns.includes(button.id)) return;
         }
         if (link && link.href && !link.hasAttribute('data-bs-toggle')){
@@ -1240,6 +1754,8 @@
             showNavigationConfirmation(e.target.action);
         }
     },true);
+
+    /* ===================== UTILITIES ===================== */
 
     function formatFileSize(bytes){
         if (bytes===0) return '0 Bytes';
