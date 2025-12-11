@@ -2,6 +2,9 @@ package codesAndStandards.springboot.userApp.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 import java.time.LocalDateTime;
 
 @Getter
@@ -34,6 +37,7 @@ public class GroupUser {
             nullable = true,
             foreignKey = @ForeignKey(name = "FK_GroupUser_User")
     )
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private User user;
 
     // FK: Group

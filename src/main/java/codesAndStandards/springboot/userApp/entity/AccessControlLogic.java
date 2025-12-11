@@ -2,6 +2,9 @@ package codesAndStandards.springboot.userApp.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 import java.time.LocalDateTime;
 
 @Getter
@@ -33,6 +36,7 @@ public class AccessControlLogic {
             referencedColumnName = "document_id",
             foreignKey = @ForeignKey(name = "FK_AccessControlLogic_Document")
     )
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Document document;
 
     // FK: Group
@@ -42,6 +46,7 @@ public class AccessControlLogic {
             referencedColumnName = "groupId",
             foreignKey = @ForeignKey(name = "FK_AccessControlLogic_Group")
     )
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Group group;
 
     // FK: Created By User
