@@ -1424,7 +1424,7 @@
 <!-- ==================== TOGGLE SIDEBAR BUTTON ==================== -->
 <!-- Floating button to toggle document info sidebar visibility -->
 <button class="toggle-sidebar-btn" id="toggleSidebarBtn" onclick="toggleSidebar()" title="Toggle Document Info">
-    <i class="bi bi-chevron-right"></i>
+    <i class="bi bi-arrow-bar-right"></i>
 </button>
 
 <!-- ==================== LOADING SPINNER ==================== -->
@@ -2532,13 +2532,13 @@
             // Sidebar is now closed
             viewer.classList.add("expanded");
             btn.classList.add("sidebar-closed");
-            btn.innerHTML = '<i class="bi bi-chevron-left"></i>';
+            btn.innerHTML = '<i class="bi bi-arrow-bar-left"></i>';
             btn.title = "Show Document Info";
         } else {
             // Sidebar is now open
             viewer.classList.remove("expanded");
             btn.classList.remove("sidebar-closed");
-            btn.innerHTML = '<i class="bi bi-chevron-right"></i>';
+            btn.innerHTML = '<i class="bi bi-arrow-bar-right"></i>';
             btn.title = "Hide Document Info";
         }
     }
