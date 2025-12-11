@@ -122,18 +122,29 @@ public class BulkUploadController {
 
     /**
      * Validate bulk upload files
+     * UPDATED: Now accepts selfValidationJson parameter for edited metadata from Step 4
      */
     @PostMapping("/validate")
     @PreAuthorize("hasAuthority('Admin')")
     @ResponseBody
     public ResponseEntity<BulkUploadValidationResult> validateBulkUpload(
             @RequestParam("pdfFiles") MultipartFile[] pdfFiles,
-            @RequestParam("excelFile") MultipartFile excelFile) {
+            @RequestParam("excelFile") MultipartFile excelFile,
+            @RequestParam(value = "selfValidationJson", required = false) String selfValidationJson) {
 
         try {
-            logger.info("Validating bulk upload: {} PDF files, Excel file: {}",
+            logger.info("Validating bulk upload: {} PDF files, Excel file: {}, Has edited metadata: {}",
                     pdfFiles != null ? pdfFiles.length : 0,
-                    excelFile != null ? excelFile.getOriginalFilename() : "null");
+                    excelFile != null ? excelFile.getOriginalFilename() : "null",
+                    selfValidationJson != null && !selfValidationJson.isEmpty() ? "YES" : "NO");
+
+            // Log the edited metadata if present
+            if (selfValidationJson != null && !selfValidationJson.isEmpty()) {
+                logger.info("=== RECEIVED EDITED METADATA IN VALIDATION ===");
+                logger.debug("selfValidationJson content: {}", selfValidationJson);
+            } else {
+                logger.info("No edited metadata provided, will parse from Excel file");
+            }
 
             if (pdfFiles == null || pdfFiles.length == 0) {
                 logger.warn("No PDF files provided for validation");
@@ -149,7 +160,12 @@ public class BulkUploadController {
                 return ResponseEntity.badRequest().body(errorResult);
             }
 
-            BulkUploadValidationResult result = bulkUploadService.validateBulkUpload(pdfFiles, excelFile);
+            // Pass the edited metadata to the service layer
+            BulkUploadValidationResult result = bulkUploadService.validateBulkUpload(
+                    pdfFiles,
+                    excelFile,
+                    selfValidationJson
+            );
 
             logger.info("Validation complete: Total={}, Valid={}, Errors={}, Warnings={}",
                     result.getTotalDocuments(),
@@ -169,19 +185,35 @@ public class BulkUploadController {
 
     /**
      * Process bulk upload
+     * UPDATED: Now accepts selfValidationJson parameter for edited metadata from Step 4
+     * Also accepts uploadOnlyValid parameter to skip documents with errors
      */
     @PostMapping("/process")
     @PreAuthorize("hasAuthority('Admin')")
     @ResponseBody
     public ResponseEntity<BulkUploadResult> processBulkUpload(
             @RequestParam("pdfFiles") MultipartFile[] pdfFiles,
-            @RequestParam("excelFile") MultipartFile excelFile) {
+            @RequestParam("excelFile") MultipartFile excelFile,
+            @RequestParam(value = "selfValidationJson", required = false) String selfValidationJson,
+            @RequestParam(value = "uploadOnlyValid", required = false) String uploadOnlyValid) {
         String username = getCurrentUsername();
 
         try {
-            logger.info("Processing bulk upload: {} PDF files, Excel file: {}",
+            boolean onlyValid = "true".equalsIgnoreCase(uploadOnlyValid);
+
+            logger.info("Processing bulk upload: {} PDF files, Excel file: {}, Has edited metadata: {}, Upload only valid: {}",
                     pdfFiles != null ? pdfFiles.length : 0,
-                    excelFile != null ? excelFile.getOriginalFilename() : "null");
+                    excelFile != null ? excelFile.getOriginalFilename() : "null",
+                    selfValidationJson != null && !selfValidationJson.isEmpty() ? "YES" : "NO",
+                    onlyValid);
+
+            // Log the edited metadata if present
+            if (selfValidationJson != null && !selfValidationJson.isEmpty()) {
+                logger.info("=== RECEIVED EDITED METADATA IN UPLOAD ===");
+                logger.debug("selfValidationJson content: {}", selfValidationJson);
+            } else {
+                logger.info("No edited metadata provided, will parse from Excel file");
+            }
 
             if (pdfFiles == null || pdfFiles.length == 0) {
                 logger.warn("No PDF files provided for processing");
@@ -199,16 +231,28 @@ public class BulkUploadController {
 
             long startTime = System.currentTimeMillis();
 
-            BulkUploadResult result = bulkUploadService.processBulkUpload(pdfFiles, excelFile);
+            // Pass the edited metadata to the service layer
+            BulkUploadResult result = bulkUploadService.processBulkUpload(
+                    pdfFiles,
+                    excelFile,
+                    selfValidationJson,
+                    onlyValid
+            );
 
             long duration = System.currentTimeMillis() - startTime;
+
+            logger.info("Bulk upload processing completed in {} ms. Success: {}, Failed: {}",
+                    duration,
+                    result.getSuccessCount(),
+                    result.getFailedCount());
 
             // Log success
             activityLogService.logByUsername(
                     username,
                     ActivityLogService.BULK_DOCUMENT_UPLOADED,
-                    "Successfully processed bulk upload of " + pdfFiles.length +
-                            " PDF(s) using metadata file: " + excelFile.getOriginalFilename()
+                    "Successfully processed bulk upload of " + result.getSuccessCount() +
+                            " document(s) using metadata file: " + excelFile.getOriginalFilename() +
+                            (selfValidationJson != null && !selfValidationJson.isEmpty() ? " (with edited metadata)" : "")
             );
             return ResponseEntity.ok(result);
 

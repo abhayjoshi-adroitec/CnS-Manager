@@ -651,6 +651,13 @@
     }
 
     let roleName = user.roleName || 'N/A';
+    // ✅ ADD THIS: Format groups for display
+    let groupsHtml = '<span class="text-muted">No groups assigned</span>';
+    if (user.groups && user.groups.length > 0) {
+        groupsHtml = user.groups.map(group =>
+            `<span class="badge rounded-pill" style="background-color: #d1fae5; color: #065f46; margin-right: 4px; margin-bottom: 4px; padding: 6px 12px; font-size: 11px;">${group.groupName}</span>`
+        ).join('');
+    }
 
     content.innerHTML = `
 <!--        <div class="user-detail-row">-->
@@ -676,6 +683,10 @@
         <div class="user-detail-row">
             <div class="user-detail-label">Role:</div>
             <div class="user-detail-value"><span class="role-pill">${roleName}</span></div>
+        </div>
+        <div class="user-detail-row">
+             <div class="user-detail-label">Groups:</div>
+             <div class="user-detail-value">${groupsHtml}</div>
         </div>
         <div class="user-detail-row">
             <div class="user-detail-label">Created At:</div>

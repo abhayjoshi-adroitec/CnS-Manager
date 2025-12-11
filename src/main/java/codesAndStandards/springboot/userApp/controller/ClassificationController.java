@@ -7,18 +7,19 @@ import codesAndStandards.springboot.userApp.service.ActivityLogService;
 import codesAndStandards.springboot.userApp.service.ClassificationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/classifications")
@@ -28,7 +29,7 @@ public class ClassificationController {
 
     private final ClassificationService classificationService;
     private final UserRepository userRepository;
-    private final ActivityLogService activityLogService; // ✅ Add ActivityLogService
+    private final ActivityLogService activityLogService;
     private static final Logger logger = LoggerFactory.getLogger(ClassificationController.class);
 
     @PostMapping
@@ -50,22 +51,20 @@ public class ClassificationController {
     }
 
     @PutMapping("/{id}")
-    // ✅ UPDATE CLASSIFICATION - OldName → NewName
     public ResponseEntity<ClassificationDto> updateClassification(@PathVariable Long id,
                                                                   @Valid @RequestBody ClassificationDto classificationDto) {
         String username = getCurrentUsername();
         try {
             Long userId = getCurrentUserId();
 
-            // ✅ Fetch old classification name
+            // Fetch old classification name
             ClassificationDto oldClassification = classificationService.getClassificationById(id);
             String oldName = oldClassification.getClassificationName();
 
-            // ✅ Update classification
+            // Update classification
             ClassificationDto updated = classificationService.updateClassification(id, classificationDto, userId);
             String newName = updated.getClassificationName();
 
-            // ✅ Log activity
             activityLogService.logByUsername(
                     username,
                     ActivityLogService.CLASSIFICATION_EDIT,
@@ -91,21 +90,20 @@ public class ClassificationController {
         try {
             Long userId = getCurrentUserId();
 
-            // ✅ Fetch name before deletion
+            // Fetch name before deletion
             ClassificationDto classification = classificationService.getClassificationById(id);
             String className = classification.getClassificationName();
 
-            // ✅ Delete classification
+            // Delete classification
             classificationService.deleteClassification(id, userId);
 
-            // ✅ Log success
             activityLogService.logByUsername(
                     username,
                     ActivityLogService.CLASSIFICATION_DELETE,
                     "Deleted classification '" + className + "'"
             );
 
-            // ✅ Response
+            // Response
             Map<String, String> response = new HashMap<>();
             response.put("message", "Classification '" + className + "' deleted successfully");
             return ResponseEntity.ok(response);
@@ -156,6 +154,42 @@ public class ClassificationController {
         } catch (Exception e) {
             logger.error("Failed to fetch documents for classification ID: " + id, e);
             throw e;
+        }
+    }
+
+    // ============================================================================
+    // 🆕 NEW ENDPOINT FOR BULK UPLOAD - Get all classification names as simple string list
+    // ============================================================================
+
+    /**
+     * Get all classifications as a simple list of classification names (strings only)
+     * Used by bulk upload feature to populate dropdowns
+     * Returns: Sorted list of unique classification names
+     *
+     * Example response: ["Standard", "Specification", "Manual", "Procedure"]
+     */
+    @GetMapping("/all")
+    public ResponseEntity<List<String>> getAllClassificationNames() {
+        try {
+            logger.debug("Fetching all classification names for bulk upload");
+
+            // Get all classifications and extract just the names
+            List<ClassificationDto> allClassifications = classificationService.getAllClassifications();
+
+            List<String> classificationNames = allClassifications.stream()
+                    .map(ClassificationDto::getClassificationName)
+                    .filter(name -> name != null && !name.trim().isEmpty())
+                    .distinct()
+                    .sorted()
+                    .collect(Collectors.toList());
+
+            logger.info("Returning {} unique classification names", classificationNames.size());
+
+            return ResponseEntity.ok(classificationNames);
+        } catch (Exception e) {
+            logger.error("Failed to fetch classification names for bulk upload", e);
+            // Return empty list instead of error to prevent frontend issues
+            return ResponseEntity.ok(List.of());
         }
     }
 

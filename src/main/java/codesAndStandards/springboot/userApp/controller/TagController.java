@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/tags")
@@ -29,7 +30,7 @@ public class TagController {
 
     private final TagService tagService;
     private final UserRepository userRepository;
-    private final ActivityLogService activityLogService; // ✅ Add Activity Log
+    private final ActivityLogService activityLogService;
     private static final Logger logger = LoggerFactory.getLogger(TagController.class);
     private final UserService userService;
 
@@ -41,13 +42,11 @@ public class TagController {
             TagDto createdTag = tagService.createTag(tagDto, userId);
             logger.info("New tag: "+tagDto.getTagName()+" added successfully");
 
-            // ✅ Activity log - success
             activityLogService.logByUsername(username, ActivityLogService.TAG_ADD,
                     "Created tag: '" + tagDto.getTagName() + "'");
 
             return new ResponseEntity<>(createdTag, HttpStatus.CREATED);
         } catch (Exception e) {
-            // ⚠️ Activity log - failure
             logger.info("Adding tag failed");
             activityLogService.logByUsername(username, ActivityLogService.TAG_ADD_FAIL,
                     "Failed to create tag: '" + tagDto.getTagName() + "' (Reason: " + e.getMessage() + ")");
@@ -62,16 +61,15 @@ public class TagController {
         try {
             Long userId = getCurrentUserId();
 
-            // ✅ Fetch the old tag name before updating
+            // Fetch the old tag name before updating
             String oldTagName = tagService.getTagById(id).getTagName();
 
-            // ✅ Update the tag
+            // Update the tag
             TagDto updatedTag = tagService.updateTag(id, tagDto, userId);
             String newTagName = updatedTag.getTagName();
 
             logger.info("Edited tag: " + oldTagName + " to " + newTagName + " successfully");
 
-            // ✅ Activity log - success message as "old → new"
             activityLogService.logByUsername(
                     username,
                     ActivityLogService.TAG_EDIT,
@@ -82,7 +80,6 @@ public class TagController {
         } catch (Exception e) {
             logger.info("Editing tag failed");
 
-            // ❌ Activity log - failure
             activityLogService.logByUsername(
                     username,
                     ActivityLogService.TAG_EDIT_FAIL,
@@ -99,23 +96,22 @@ public class TagController {
         try {
             Long userId = getCurrentUserId();
 
-            // ✅ Fetch the tag name before deletion
+            // Fetch the tag name before deletion
             TagDto tag = tagService.getTagById(id);
             String tagName = tag.getTagName();
 
-            // ✅ Delete the tag
+            // Delete the tag
             tagService.deleteTag(id, userId);
 
             logger.info("Tag '" + tagName + "' deleted successfully");
 
-            // ✅ Log success with tag name
             activityLogService.logByUsername(
                     username,
                     ActivityLogService.TAG_DELETE,
                     "Deleted tag: '" + tagName + "'"
             );
 
-            // ✅ Send response with tag name
+            // Send response with tag name
             Map<String, String> response = new HashMap<>();
             response.put("message", "Tag '" + tagName + "' deleted successfully");
             return ResponseEntity.ok(response);
@@ -123,7 +119,6 @@ public class TagController {
         } catch (Exception e) {
             logger.info("Deleting tag failed");
 
-            // ⚠️ Log failure
             activityLogService.logByUsername(
                     username,
                     ActivityLogService.TAG_DELETE_FAIL,
@@ -171,6 +166,42 @@ public class TagController {
         } catch (Exception e) {
             logger.error("Failed to fetch documents for tag ID: " + id, e);
             throw e;
+        }
+    }
+
+    // ============================================================================
+    // 🆕 NEW ENDPOINT FOR BULK UPLOAD - Get all tag names as simple string list
+    // ============================================================================
+
+    /**
+     * Get all tags as a simple list of tag names (strings only)
+     * Used by bulk upload feature to populate dropdowns
+     * Returns: Sorted list of unique tag names
+     *
+     * Example response: ["safety", "quality", "design", "manufacturing"]
+     */
+    @GetMapping("/all")
+    public ResponseEntity<List<String>> getAllTagNames() {
+        try {
+            logger.debug("Fetching all tag names for bulk upload");
+
+            // Get all tags and extract just the names
+            List<TagDto> allTags = tagService.getAllTags();
+
+            List<String> tagNames = allTags.stream()
+                    .map(TagDto::getTagName)
+                    .filter(name -> name != null && !name.trim().isEmpty())
+                    .distinct()
+                    .sorted()
+                    .collect(Collectors.toList());
+
+            logger.info("Returning {} unique tag names", tagNames.size());
+
+            return ResponseEntity.ok(tagNames);
+        } catch (Exception e) {
+            logger.error("Failed to fetch tag names for bulk upload", e);
+            // Return empty list instead of error to prevent frontend issues
+            return ResponseEntity.ok(List.of());
         }
     }
 

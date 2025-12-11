@@ -12,9 +12,13 @@ import codesAndStandards.springboot.userApp.repository.DocumentRepository;
 import codesAndStandards.springboot.userApp.repository.TagRepository;
 import codesAndStandards.springboot.userApp.repository.ClassificationRepository;
 import codesAndStandards.springboot.userApp.repository.UserRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -22,14 +26,17 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.apache.poi.ss.usermodel.DataValidation;
+import org.apache.poi.ss.usermodel.DataValidationConstraint;
+import org.apache.poi.ss.usermodel.DataValidationHelper;
+import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.ss.util.CellRangeAddressList;
 
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.security.Principal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -38,6 +45,8 @@ import java.util.zip.ZipInputStream;
 
 @Service
 public class BulkUploadService {
+
+    private static final Logger logger = LoggerFactory.getLogger(BulkUploadService.class);
 
     @Autowired
     private DocumentRepository documentRepository;
@@ -59,6 +68,7 @@ public class BulkUploadService {
 
     /**
      * Generate Excel template from uploaded PDF files
+     * FEATURES 3, 4, 5: Add month dropdown, page numbers, and second sheet
      */
     public ByteArrayOutputStream generateExcelTemplate(MultipartFile[] pdfFiles) throws Exception {
         // Extract PDF filenames
@@ -66,6 +76,8 @@ public class BulkUploadService {
 
         // Create Excel workbook
         Workbook workbook = new XSSFWorkbook();
+
+        // ============= SHEET 1: DOCUMENT METADATA =============
         Sheet sheet = workbook.createSheet("Documents");
 
         // Create header style
@@ -107,23 +119,132 @@ public class BulkUploadService {
             }
         }
 
+        // FEATURE 3: Create dropdown for Publish Month column
+        DataValidationHelper validationHelper = sheet.getDataValidationHelper();
+        DataValidationConstraint monthConstraint = validationHelper.createExplicitListConstraint(
+                new String[]{
+                        "01 (Jan)", "02 (Feb)", "03 (Mar)", "04 (Apr)",
+                        "05 (May)", "06 (Jun)", "07 (Jul)", "08 (Aug)",
+                        "09 (Sep)", "10 (Oct)", "11 (Nov)", "12 (Dec)"
+                }
+        );
+
+        // Apply dropdown to Publish Month column (column index 4) for rows 1-1000
+        CellRangeAddressList monthRange = new CellRangeAddressList(1, 1000, 4, 4);
+        DataValidation monthValidation = validationHelper.createValidation(monthConstraint, monthRange);
+        monthValidation.setShowErrorBox(true);
+        sheet.addValidationData(monthValidation);
+
         // Create data rows with filenames
         int rowNum = 1;
         List<String> sortedFilenames = new ArrayList<>(pdfFilenames);
         Collections.sort(sortedFilenames);
 
+        // FEATURE 4: Create file map to detect page numbers
+        Map<String, MultipartFile> fileMap = createFileMap(pdfFiles);
+
         for (String filename : sortedFilenames) {
             Row row = sheet.createRow(rowNum++);
 
-            // Filename (pre-filled)
+            // Column 0: Filename (pre-filled)
             Cell filenameCell = row.createCell(0);
             filenameCell.setCellValue(filename);
 
-            // Empty cells for metadata to be filled by user
-            for (int i = 1; i < columns.length; i++) {
+            // Columns 1-5: Empty (Title, Product Code, Edition, Publish Month, Publish Year)
+            for (int i = 1; i <= 5; i++) {
+                row.createCell(i).setCellValue("");
+            }
+
+            // Column 6: FEATURE 4 - Auto-detect page count
+            Cell pageCell = row.createCell(6);
+            try {
+                MultipartFile file = fileMap.get(filename);
+                if (file != null) {
+                    Integer pageCount = detectPageCount(file);
+                    if (pageCount != null && pageCount > 0) {
+                        pageCell.setCellValue(pageCount);
+                    } else {
+                        pageCell.setCellValue("");
+                    }
+                } else {
+                    pageCell.setCellValue("");
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to detect page count for {}: {}", filename, e.getMessage());
+                pageCell.setCellValue("");
+            }
+
+            // Columns 7-9: Empty (Notes, Tags, Classifications)
+            for (int i = 7; i <= 9; i++) {
                 row.createCell(i).setCellValue("");
             }
         }
+
+        // ============= SHEET 2: REFERENCE DATA =============
+        // FEATURE 5: Create second sheet with existing tags and classifications
+        Sheet referenceSheet = workbook.createSheet("Reference Data");
+
+        // Create header style for reference sheet
+        Row refHeaderRow = referenceSheet.createRow(0);
+        Cell tagsHeaderCell = refHeaderRow.createCell(0);
+        tagsHeaderCell.setCellValue("Available Tags");
+        tagsHeaderCell.setCellStyle(headerStyle);
+
+        Cell classHeaderCell = refHeaderRow.createCell(2);
+        classHeaderCell.setCellValue("Available Classifications");
+        classHeaderCell.setCellStyle(headerStyle);
+
+        referenceSheet.setColumnWidth(0, 30 * 256);
+        referenceSheet.setColumnWidth(2, 30 * 256);
+
+        // Fetch existing tags and classifications from database
+        List<String> existingTags = tagRepository.findAll().stream()
+                .map(Tag::getTagName)
+                .filter(name -> name != null && !name.isEmpty())
+                .sorted()
+                .distinct()
+                .collect(Collectors.toList());
+
+        List<String> existingClassifications = classificationRepository.findAll().stream()
+                .map(Classification::getClassificationName)
+                .filter(name -> name != null && !name.isEmpty())
+                .sorted()
+                .distinct()
+                .collect(Collectors.toList());
+
+        // Add tags to column A (starting from row 1)
+        int tagRowNum = 1;
+        for (String tag : existingTags) {
+            Row row = referenceSheet.getRow(tagRowNum);
+            if (row == null) row = referenceSheet.createRow(tagRowNum);
+            row.createCell(0).setCellValue(tag);
+            tagRowNum++;
+        }
+
+        // Add classifications to column C (starting from row 1)
+        int classRowNum = 1;
+        for (String classification : existingClassifications) {
+            Row row = referenceSheet.getRow(classRowNum);
+            if (row == null) row = referenceSheet.createRow(classRowNum);
+            row.createCell(2).setCellValue(classification);
+            classRowNum++;
+        }
+
+        // Add note at the bottom
+        int noteRowNum = Math.max(tagRowNum, classRowNum) + 2;
+        Row noteRow = referenceSheet.createRow(noteRowNum);
+        Cell noteCell = noteRow.createCell(0);
+        noteCell.setCellValue("Note: You can add new tags/classifications in the Documents sheet. " +
+                "New entries will be created automatically during upload.");
+
+        CellStyle noteStyle = workbook.createCellStyle();
+        Font noteFont = workbook.createFont();
+        noteFont.setItalic(true);
+        noteFont.setColor(IndexedColors.GREY_50_PERCENT.getIndex());
+        noteStyle.setFont(noteFont);
+        noteCell.setCellStyle(noteStyle);
+
+        referenceSheet.addMergedRegion(new CellRangeAddress(noteRowNum, noteRowNum, 0, 2));
 
         // Write workbook to ByteArrayOutputStream
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -135,15 +256,31 @@ public class BulkUploadService {
 
     /**
      * Validate bulk upload files
+     * UPDATED: Now accepts selfValidationJson parameter for edited metadata
      */
-    public BulkUploadValidationResult validateBulkUpload(MultipartFile[] pdfFiles, MultipartFile excelFile) throws Exception {
+    public BulkUploadValidationResult validateBulkUpload(
+            MultipartFile[] pdfFiles,
+            MultipartFile excelFile,
+            String selfValidationJson) throws Exception {
+
         BulkUploadValidationResult result = new BulkUploadValidationResult();
 
-        // Parse Excel file
-        List<DocumentMetadata> metadataList = parseExcelFile(excelFile);
+        // CRITICAL: Determine metadata source
+        List<DocumentMetadata> metadataList;
+
+        if (selfValidationJson != null && !selfValidationJson.isEmpty()) {
+            logger.info("=== USING EDITED METADATA FOR VALIDATION ===");
+            metadataList = parseJsonToMetadataList(selfValidationJson);
+            logger.info("Parsed {} documents from edited metadata", metadataList.size());
+        } else {
+            logger.info("=== PARSING METADATA FROM EXCEL FILE ===");
+            metadataList = parseExcelFile(excelFile);
+            logger.info("Parsed {} documents from Excel file", metadataList.size());
+        }
 
         // Extract PDF filenames
         Set<String> pdfFilenames = extractPdfFilenames(pdfFiles);
+        logger.info("Extracted {} PDF filenames from uploaded files", pdfFilenames.size());
 
         // Validation checks
         result.setTotalDocuments(metadataList.size());
@@ -153,7 +290,7 @@ public class BulkUploadService {
             String filename = metadata.getFilename();
 
             if (!pdfFilenames.contains(filename)) {
-                result.addError("Missing PDF File", "PDF file '" + filename + "' mentioned in Excel not found in uploaded files");
+                result.addError("Missing PDF File", "PDF file '" + filename + "' mentioned in metadata not found in uploaded files");
             } else {
                 // Validate metadata fields
                 validateMetadata(metadata, result);
@@ -167,48 +304,115 @@ public class BulkUploadService {
 
         for (String pdfFilename : pdfFilenames) {
             if (!metadataFilenames.contains(pdfFilename)) {
-                result.addWarning("Extra PDF File", "PDF file '" + pdfFilename + "' uploaded but not found in Excel metadata");
+                result.addWarning("Extra PDF File", "PDF file '" + pdfFilename + "' uploaded but not found in metadata");
             }
         }
 
         // Calculate valid documents
-        int errorCount = result.getErrors().size();
+        int errorCount = result.getErrors() != null ? result.getErrors().size() : 0;
         result.setValidDocuments(result.getTotalDocuments() - errorCount);
+
+        logger.info("Validation complete: Total={}, Valid={}, Errors={}, Warnings={}",
+                result.getTotalDocuments(),
+                result.getValidDocuments(),
+                errorCount,
+                result.getWarnings() != null ? result.getWarnings().size() : 0);
 
         return result;
     }
 
     /**
      * Process bulk upload
+     * UPDATED: Now accepts selfValidationJson and uploadOnlyValid parameters
      */
     @Transactional
-    public BulkUploadResult processBulkUpload(MultipartFile[] pdfFiles, MultipartFile excelFile) throws Exception {
+    public BulkUploadResult processBulkUpload(
+            MultipartFile[] pdfFiles,
+            MultipartFile excelFile,
+            String selfValidationJson,
+            boolean uploadOnlyValid) throws Exception {
+
         BulkUploadResult result = new BulkUploadResult();
 
         try {
-            // Parse Excel file
-            List<DocumentMetadata> metadataList = parseExcelFile(excelFile);
+            // CRITICAL: Determine metadata source
+            List<DocumentMetadata> metadataList;
+
+            if (selfValidationJson != null && !selfValidationJson.isEmpty()) {
+                logger.info("=== USING EDITED METADATA FOR UPLOAD ===");
+                metadataList = parseJsonToMetadataList(selfValidationJson);
+                logger.info("Parsed {} documents from edited metadata", metadataList.size());
+            } else {
+                logger.info("=== PARSING METADATA FROM EXCEL FILE ===");
+                metadataList = parseExcelFile(excelFile);
+                logger.info("Parsed {} documents from Excel file", metadataList.size());
+            }
+
+            // If uploadOnlyValid is true, filter out invalid documents
+            if (uploadOnlyValid) {
+                logger.info("Upload only valid mode enabled - validating before upload");
+                BulkUploadValidationResult validation = validateBulkUpload(pdfFiles, excelFile, selfValidationJson);
+
+                // Filter metadata to only include valid documents
+                Set<String> invalidFilenames = new HashSet<>();
+                if (validation.getErrors() != null) {
+                    for (Object errorObj : validation.getErrors()) {
+                        String errorStr = errorObj.toString();
+                        // Extract filename from error message
+                        // Assuming error format: "Document 'filename.pdf' is missing title"
+                        if (errorStr.contains("'") && errorStr.contains(".pdf")) {
+                            int start = errorStr.indexOf("'") + 1;
+                            int end = errorStr.indexOf("'", start);
+                            if (end > start) {
+                                String filename = errorStr.substring(start, end);
+                                invalidFilenames.add(filename);
+                            }
+                        }
+                    }
+                }
+
+                if (!invalidFilenames.isEmpty()) {
+                    logger.info("Filtering out {} invalid documents", invalidFilenames.size());
+                    metadataList = metadataList.stream()
+                            .filter(m -> !invalidFilenames.contains(m.getFilename()))
+                            .collect(Collectors.toList());
+                    logger.info("Remaining valid documents to upload: {}", metadataList.size());
+                }
+            }
 
             // Create map of filename to file
             Map<String, MultipartFile> fileMap = createFileMap(pdfFiles);
+            logger.info("Created file map with {} entries", fileMap.size());
 
             // Process each document
+            int processedCount = 0;
             for (DocumentMetadata metadata : metadataList) {
                 try {
+                    processedCount++;
+                    logger.info("Processing document {}/{}: {}",
+                            processedCount, metadataList.size(), metadata.getFilename());
+
                     MultipartFile pdfFile = fileMap.get(metadata.getFilename());
 
                     if (pdfFile != null) {
                         uploadDocument(pdfFile, metadata);
                         result.addSuccess(metadata.getFilename());
+                        logger.info("Successfully uploaded: {}", metadata.getFilename());
                     } else {
                         result.addFailure(metadata.getFilename(), "PDF file not found");
+                        logger.warn("PDF file not found in file map: {}", metadata.getFilename());
                     }
                 } catch (Exception e) {
+                    logger.error("Failed to upload document: " + metadata.getFilename(), e);
                     result.addFailure(metadata.getFilename(), e.getMessage());
                 }
             }
 
+            logger.info("Bulk upload processing complete. Success: {}, Failed: {}",
+                    result.getSuccessCount(), result.getFailedCount());
+
         } catch (Exception e) {
+            logger.error("Bulk upload processing failed", e);
             result.addError("Bulk upload processing failed: " + e.getMessage());
         }
 
@@ -216,7 +420,133 @@ public class BulkUploadService {
     }
 
     /**
+     * FIXED: Parse JSON to metadata with proper month handling
+     */
+    private List<DocumentMetadata> parseJsonToMetadataList(String jsonString) throws Exception {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            List<Map<String, Object>> jsonList = objectMapper.readValue(
+                    jsonString,
+                    new TypeReference<List<Map<String, Object>>>() {
+                    }
+            );
+
+            List<DocumentMetadata> metadataList = new ArrayList<>();
+
+            for (Map<String, Object> jsonObj : jsonList) {
+                DocumentMetadata metadata = new DocumentMetadata();
+
+                // Extract fields from JSON
+                metadata.setFilename(getStringValue(jsonObj, "fileName"));
+                metadata.setTitle(getStringValue(jsonObj, "title"));
+                metadata.setProductCode(getStringValue(jsonObj, "productCode"));
+                metadata.setEdition(getStringValue(jsonObj, "edition"));
+
+                // FIXED: Handle publishMonth properly
+                String publishMonth = getStringValue(jsonObj, "publishMonth");
+                if (publishMonth != null && !publishMonth.trim().isEmpty()) {
+                    publishMonth = publishMonth.trim();
+
+                    // If format is "01 (Jan)", extract just "01"
+                    if (publishMonth.contains("(")) {
+                        publishMonth = publishMonth.substring(0, publishMonth.indexOf("(")).trim();
+                    }
+
+                    // Ensure it's always 2 digits
+                    if (publishMonth.length() == 1) {
+                        publishMonth = "0" + publishMonth;
+                    }
+
+                    logger.debug("Parsed publishMonth from JSON: '{}'", publishMonth);
+                }
+                metadata.setPublishMonth(publishMonth);
+
+                metadata.setPublishYear(getStringValue(jsonObj, "publishYear"));
+
+                // Handle noOfPages
+                Object noOfPagesObj = jsonObj.get("noOfPages");
+                if (noOfPagesObj != null) {
+                    if (noOfPagesObj instanceof Number) {
+                        metadata.setNoOfPages(((Number) noOfPagesObj).intValue());
+                    } else if (noOfPagesObj instanceof String) {
+                        String noOfPagesStr = (String) noOfPagesObj;
+                        if (!noOfPagesStr.isEmpty()) {
+                            try {
+                                metadata.setNoOfPages(Integer.parseInt(noOfPagesStr));
+                            } catch (NumberFormatException e) {
+                                logger.warn("Invalid page count for {}: {}", metadata.getFilename(), noOfPagesStr);
+                            }
+                        }
+                    }
+                }
+
+                metadata.setNotes(getStringValue(jsonObj, "notes"));
+
+                // Handle tags array with normalization
+                Object tagsObj = jsonObj.get("tags");
+                if (tagsObj instanceof List) {
+                    List<?> tagsList = (List<?>) tagsObj;
+                    String tagsString = tagsList.stream()
+                            .map(Object::toString)
+                            .map(this::normalizeTag)
+                            .filter(tag -> !tag.isEmpty())
+                            .collect(Collectors.joining(","));
+                    metadata.setTags(tagsString);
+                } else if (tagsObj instanceof String) {
+                    String tagsValue = (String) tagsObj;
+                    String normalizedTags = Arrays.stream(tagsValue.split(","))
+                            .map(this::normalizeTag)
+                            .filter(tag -> !tag.isEmpty())
+                            .collect(Collectors.joining(","));
+                    metadata.setTags(normalizedTags);
+                }
+
+                // Handle classifications array
+                Object classificationsObj = jsonObj.get("classifications");
+                if (classificationsObj instanceof List) {
+                    List<?> classificationsList = (List<?>) classificationsObj;
+                    String classificationsString = classificationsList.stream()
+                            .map(Object::toString)
+                            .collect(Collectors.joining(","));
+                    metadata.setClassifications(classificationsString);
+                } else if (classificationsObj instanceof String) {
+                    metadata.setClassifications((String) classificationsObj);
+                }
+
+                metadataList.add(metadata);
+
+                logger.debug("Parsed metadata from JSON: filename={}, title={}, publishMonth={}, tags={}, classifications={}",
+                        metadata.getFilename(),
+                        metadata.getTitle(),
+                        metadata.getPublishMonth(),
+                        metadata.getTags(),
+                        metadata.getClassifications());
+            }
+
+            logger.info("Parsed {} documents from JSON metadata", metadataList.size());
+            return metadataList;
+
+        } catch (Exception e) {
+            logger.error("Failed to parse JSON metadata", e);
+            throw new Exception("Failed to parse edited metadata: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Helper method to safely extract string values from JSON map
+     */
+    private String getStringValue(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        if (value == null) {
+            return null;
+        }
+        return value.toString().trim();
+    }
+
+    /**
      * Parse Excel file and extract metadata
+     * FIXED: Properly handle month parsing from dropdown format
      */
     private List<DocumentMetadata> parseExcelFile(MultipartFile excelFile) throws Exception {
         List<DocumentMetadata> metadataList = new ArrayList<>();
@@ -238,25 +568,73 @@ public class BulkUploadService {
                 metadata.setTitle(getCellValueAsString(row.getCell(1)));
                 metadata.setProductCode(getCellValueAsString(row.getCell(2)));
                 metadata.setEdition(getCellValueAsString(row.getCell(3)));
-                metadata.setPublishMonth(getCellValueAsString(row.getCell(4)));
+
+                // FIXED: Parse month from dropdown (handle multiple formats)
+                String publishMonth = getCellValueAsString(row.getCell(4));
+                if (publishMonth != null && !publishMonth.trim().isEmpty()) {
+                    // Handle format "01 (Jan)" or "01" or "1"
+                    publishMonth = publishMonth.trim();
+
+                    // If format is "01 (Jan)", extract just "01"
+                    if (publishMonth.contains("(")) {
+                        publishMonth = publishMonth.substring(0, publishMonth.indexOf("(")).trim();
+                    }
+
+                    // Ensure it's always 2 digits (convert "1" to "01")
+                    if (publishMonth.length() == 1) {
+                        publishMonth = "0" + publishMonth;
+                    }
+
+                    logger.debug("Parsed publish month: '{}'", publishMonth);
+                }
+                metadata.setPublishMonth(publishMonth);
+
                 metadata.setPublishYear(getCellValueAsString(row.getCell(5)));
                 metadata.setNoOfPages(getCellValueAsInteger(row.getCell(6)));
                 metadata.setNotes(getCellValueAsString(row.getCell(7)));
-                metadata.setTags(getCellValueAsString(row.getCell(8)));
+
+                // Parse and normalize tags
+                String tagsValue = getCellValueAsString(row.getCell(8));
+                if (tagsValue != null && !tagsValue.isEmpty()) {
+                    String normalizedTags = Arrays.stream(tagsValue.split(","))
+                            .map(tag -> normalizeTag(tag))
+                            .filter(tag -> !tag.isEmpty())
+                            .collect(Collectors.joining(","));
+                    metadata.setTags(normalizedTags);
+                } else {
+                    metadata.setTags("");
+                }
+
                 metadata.setClassifications(getCellValueAsString(row.getCell(9)));
 
                 // Only add if filename is present
                 if (metadata.getFilename() != null && !metadata.getFilename().isEmpty()) {
                     metadataList.add(metadata);
+
+                    // Log the parsed metadata for debugging
+                    logger.debug("Parsed metadata: filename={}, publishMonth={}",
+                            metadata.getFilename(), metadata.getPublishMonth());
                 }
             }
         }
 
+        logger.info("Parsed {} documents from Excel", metadataList.size());
         return metadataList;
     }
 
     /**
+     * FEATURE 6: Normalize tag - remove all spaces and convert to lowercase
+     */
+    private String normalizeTag(String tag) {
+        if (tag == null || tag.trim().isEmpty()) {
+            return "";
+        }
+        return tag.trim().replaceAll("\\s+", "").toLowerCase();
+    }
+
+    /**
      * Extract PDF filenames from uploaded files (including ZIP extraction)
+     * CRITICAL FIX: Handle folder uploads where originalFilename includes path
      */
     private Set<String> extractPdfFilenames(MultipartFile[] files) throws IOException {
         Set<String> filenames = new HashSet<>();
@@ -273,20 +651,27 @@ public class BulkUploadService {
                             // Get just the filename without path
                             String filename = new File(entry.getName()).getName();
                             filenames.add(filename);
+                            logger.debug("Extracted from ZIP: {}", filename);
                         }
                         zis.closeEntry();
                     }
                 }
             } else if (originalFilename != null && originalFilename.toLowerCase().endsWith(".pdf")) {
-                filenames.add(originalFilename);
+                // CRITICAL FIX: Extract just the filename from path (handles folder uploads)
+                // Example: "normal/dilligent.pdf" -> "dilligent.pdf"
+                String justFilename = new File(originalFilename).getName();
+                filenames.add(justFilename);
+                logger.debug("Extracted filename: {} (from: {})", justFilename, originalFilename);
             }
         }
 
+        logger.info("Extracted {} unique PDF filenames", filenames.size());
         return filenames;
     }
 
     /**
      * Create map of filename to MultipartFile (handles ZIP extraction)
+     * CRITICAL FIX: Handle folder uploads where originalFilename includes path
      */
     private Map<String, MultipartFile> createFileMap(MultipartFile[] files) throws IOException {
         Map<String, MultipartFile> fileMap = new HashMap<>();
@@ -298,10 +683,15 @@ public class BulkUploadService {
                 // Extract and store files from ZIP
                 extractZipFiles(file, fileMap);
             } else if (originalFilename != null && originalFilename.toLowerCase().endsWith(".pdf")) {
-                fileMap.put(originalFilename, file);
+                // CRITICAL FIX: Use just the filename as key (without folder path)
+                // Example: "normal/dilligent.pdf" -> key is "dilligent.pdf"
+                String justFilename = new File(originalFilename).getName();
+                fileMap.put(justFilename, file);
+                logger.debug("Added to fileMap: {} -> {}", justFilename, originalFilename);
             }
         }
 
+        logger.info("Created file map with {} entries", fileMap.size());
         return fileMap;
     }
 
@@ -372,7 +762,7 @@ public class BulkUploadService {
         // 2. SAVE FILE WITH TIMESTAMP
         String savedName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
 
-        String networkPath = "\\\\172.16.20.241\\DEV-FileServer\\USERDATA\\Abhay\\" + savedName;
+        String networkPath = "\\\\172.16.20.241\\DEV-FileServer\\USERDATA\\Lochan\\" + savedName;
 
         Path savedPath = Paths.get(networkPath);
         Files.createDirectories(savedPath.getParent());
@@ -384,7 +774,9 @@ public class BulkUploadService {
         if (pageCount == null || pageCount == 0) {
             try {
                 pageCount = detectPageCount(file);
+                logger.info("Auto-detected page count for {}: {}", file.getOriginalFilename(), pageCount);
             } catch (Exception e) {
+                logger.warn("Failed to auto-detect page count for {}: {}", file.getOriginalFilename(), e.getMessage());
                 pageCount = null;
             }
         }
@@ -438,6 +830,7 @@ public class BulkUploadService {
                 tags.add(tag);
             }
             document.setTags(tags);
+            logger.info("Added {} tags to document: {}", tags.size(), file.getOriginalFilename());
         }
 
         // 8. HANDLE CLASSIFICATIONS (after document is saved)
@@ -458,10 +851,12 @@ public class BulkUploadService {
                 classifications.add(classification);
             }
             document.setClassifications(classifications);
+            logger.info("Added {} classifications to document: {}", classifications.size(), file.getOriginalFilename());
         }
 
         // 9. SAVE DOCUMENT AGAIN with tags and classifications
         documentRepository.save(document);
+        logger.info("Document saved successfully: {}", file.getOriginalFilename());
     }
 
     /**
@@ -497,17 +892,30 @@ public class BulkUploadService {
 
         switch (cell.getCellType()) {
             case STRING:
-                return cell.getStringCellValue();
+                return cell.getStringCellValue().trim();
             case NUMERIC:
                 if (DateUtil.isCellDateFormatted(cell)) {
                     return cell.getDateCellValue().toString();
                 } else {
-                    return String.valueOf((long) cell.getNumericCellValue());
+                    // Check if it's a whole number
+                    double numValue = cell.getNumericCellValue();
+                    if (numValue == Math.floor(numValue)) {
+                        // It's a whole number, return as integer string
+                        return String.valueOf((int) numValue);
+                    } else {
+                        return String.valueOf(numValue);
+                    }
                 }
             case BOOLEAN:
                 return String.valueOf(cell.getBooleanCellValue());
             case FORMULA:
-                return cell.getCellFormula();
+                try {
+                    return cell.getStringCellValue().trim();
+                } catch (Exception e) {
+                    return String.valueOf(cell.getNumericCellValue());
+                }
+            case BLANK:
+                return null;
             default:
                 return null;
         }
@@ -523,9 +931,14 @@ public class BulkUploadService {
             if (cell.getCellType() == CellType.NUMERIC) {
                 return (int) cell.getNumericCellValue();
             } else if (cell.getCellType() == CellType.STRING) {
-                return Integer.parseInt(cell.getStringCellValue());
+                String value = cell.getStringCellValue().trim();
+                if (value.isEmpty()) return null;
+                return Integer.parseInt(value);
+            } else if (cell.getCellType() == CellType.BLANK) {
+                return null;
             }
         } catch (Exception e) {
+            logger.warn("Failed to parse integer from cell", e);
             return null;
         }
         return null;
